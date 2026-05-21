@@ -510,6 +510,20 @@ html, body {
 
 .preset-edit-row:last-child { border-bottom: none; }
 
+.range-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: color 0.15s, border-color 0.15s;
+}
+.range-btn.active { color: var(--accent); border-color: var(--accent); }
+
 .export-btn {
   width: 100%;
   background: var(--surface);
@@ -613,8 +627,28 @@ html, body {
       </div>
 
       <div class="chart-wrap">
-        <div class="chart-title">Last 14 days</div>
-        <div class="bar-chart" id="bar-chart"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div class="chart-title" style="margin-bottom:0;">Daily totals</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <button class="range-btn active" id="type-bar" onclick="setChartType('bar')" title="Bar chart">▐▌</button>
+            <button class="range-btn" id="type-line" onclick="setChartType('line')" title="Line chart">╱</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;" id="range-btns">
+          <button class="range-btn active" onclick="setRange('7')">7d</button>
+          <button class="range-btn" onclick="setRange('14')">14d</button>
+          <button class="range-btn" onclick="setRange('all')">All</button>
+          <button class="range-btn" onclick="setRange('custom')">Custom</button>
+        </div>
+        <div id="custom-range-inputs" style="display:none;gap:6px;margin-bottom:10px;align-items:center;">
+          <input type="date" id="range-from" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;" />
+          <span style="color:var(--muted);font-size:12px;">to</span>
+          <input type="date" id="range-to" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;" />
+          <button onclick="applyCustomRange()" style="background:var(--accent);border:none;border-radius:8px;padding:6px 10px;font-family:var(--mono);font-size:11px;color:#0a0a0a;cursor:pointer;white-space:nowrap;">Go</button>
+        </div>
+        <div style="position:relative;width:100%;height:140px;">
+          <canvas id="main-chart" role="img" aria-label="Daily caffeine totals chart"></canvas>
+        </div>
       </div>
 
       <div class="chart-wrap">
@@ -673,6 +707,7 @@ html, body {
   </nav>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 const STORAGE_KEY = 'caffeine_v2';
 const SETTINGS_KEY = 'caffeine_settings_v2';
@@ -708,6 +743,39 @@ const HISTORICAL = [
   {d:'2026-05-20', entries:[{s:'1x 100mg pill',mg:100},{s:'1/2 Celsius',mg:100}]},
   {d:'2026-05-21', entries:[{s:'1x 100mg pill',mg:100},{s:'2 squares dark choc',mg:5.4},{s:'16oz decaf',mg:16},{s:'1 square dark choc',mg:2.7},{s:'Nespresso pod',mg:75}]},
 ];
+
+let currentRange = '7';
+let customFrom = null, customTo = null;
+let currentChartType = 'bar';
+let mainChart = null;
+
+function setChartType(type) {
+  currentChartType = type;
+  document.getElementById('type-bar').classList.toggle('active', type==='bar');
+  document.getElementById('type-line').classList.toggle('active', type==='line');
+  renderTrends();
+}
+
+function setRange(r) {
+  currentRange = r;
+  document.querySelectorAll('#range-btns .range-btn').forEach(b => b.classList.remove('active'));
+  const idx = ['7','14','all','custom'].indexOf(r);
+  document.querySelectorAll('#range-btns .range-btn')[idx].classList.add('active');
+  const ci = document.getElementById('custom-range-inputs');
+  if (r === 'custom') {
+    ci.style.display = 'flex';
+  } else {
+    ci.style.display = 'none';
+    renderTrends();
+  }
+}
+
+function applyCustomRange() {
+  customFrom = document.getElementById('range-from').value;
+  customTo = document.getElementById('range-to').value;
+  if (customFrom && customTo) renderTrends();
+}
+
 
 function load(key, def) {
   try { return JSON.parse(localStorage.getItem(key)) || def; } catch { return def; }
@@ -837,24 +905,76 @@ function renderTrends() {
     document.getElementById('t-low').innerHTML = Math.round(Math.min(...vals)) + '<span class="stat-cell-unit"> mg</span>';
   }
 
-  // 14-day bar chart
+  // Main chart — range aware
   const today = new Date();
-  const labels=[], data=[];
-  for (let i=13;i>=0;i--) {
-    const d = new Date(today); d.setDate(d.getDate()-i);
-    const ds = d.toISOString().slice(0,10);
-    labels.push(i===0 ? 'today' : fmtDow(ds));
-    data.push(Math.round(dt[ds]||0));
+  const allSortedDates = Object.keys(dt).sort();
+  let labels=[], data=[];
+
+  if (currentRange === 'all') {
+    allSortedDates.forEach(ds => {
+      labels.push(fmtDate(ds));
+      data.push(Math.round(dt[ds]||0));
+    });
+  } else if (currentRange === 'custom' && customFrom && customTo) {
+    allSortedDates.filter(ds => ds >= customFrom && ds <= customTo).forEach(ds => {
+      labels.push(fmtDate(ds));
+      data.push(Math.round(dt[ds]||0));
+    });
+  } else {
+    const days = currentRange === '7' ? 7 : 14;
+    for (let i=days-1;i>=0;i--) {
+      const d = new Date(today); d.setDate(d.getDate()-i);
+      const ds = d.toISOString().slice(0,10);
+      labels.push(i===0 ? 'today' : fmtDow(ds));
+      data.push(Math.round(dt[ds]||0));
+    }
   }
-  const max14 = Math.max(...data, 1);
-  const bc = document.getElementById('bar-chart');
-  bc.innerHTML = '';
-  data.forEach((v,i) => {
-    const col = document.createElement('div');
-    col.className = 'bar-col';
-    const h = Math.round((v/max14)*80);
-    col.innerHTML = `<div class="bar-fill${i===13?' today':''}" style="height:${h}px"></div><div class="bar-lbl">${labels[i]}</div>`;
-    bc.appendChild(col);
+
+  if (mainChart) mainChart.destroy();
+  const isLine = currentChartType === 'line';
+  const accentColor = '#c8f060';
+  const ctx = document.getElementById('main-chart').getContext('2d');
+  mainChart = new Chart(ctx, {
+    type: isLine ? 'line' : 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: isLine ? 'rgba(200,240,96,0.12)' : 'rgba(200,240,96,0.7)',
+        borderColor: accentColor,
+        borderWidth: isLine ? 2 : 0,
+        pointBackgroundColor: accentColor,
+        pointRadius: isLine ? (data.length > 20 ? 2 : 3) : 0,
+        fill: isLine,
+        tension: 0.3,
+        borderRadius: isLine ? 0 : 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ctx.parsed.y + ' mg' }
+      }},
+      scales: {
+        x: {
+          ticks: {
+            color: '#555',
+            font: { size: 9, family: 'DM Mono' },
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 10,
+          },
+          grid: { display: false },
+          border: { display: false },
+        },
+        y: {
+          ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          border: { display: false },
+        }
+      }
+    }
   });
 
   // DOW chart
