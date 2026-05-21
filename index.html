@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Caffeine">
+<meta name="theme-color" content="#0a0a0a">
+<title>Caffeine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface2: #1e1e1e;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f0ede6;
+  --muted: #888;
+  --dim: #555;
+  --accent: #c8f060;
+  --accent2: #60c8f0;
+  --warn: #f0a060;
+  --danger: #f06060;
+  --mono: 'DM Mono', monospace;
+  --serif: 'Fraunces', serif;
+  --safe: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  overflow: hidden;
+}
+
+/* LAYOUT */
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 430px;
+  margin: 0 auto;
+}
+
+.topbar {
+  padding: 52px 20px 16px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.topbar-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.app-title {
+  font-family: var(--serif);
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  font-style: italic;
+}
+
+.today-date {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding-bottom: 3px;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.screen { display: none; padding: 0 20px 20px; }
+.screen.active { display: block; }
+
+/* TABBAR */
+.tabbar {
+  display: flex;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  padding-bottom: max(var(--safe), 8px);
+  flex-shrink: 0;
+}
+
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 4px 6px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: color 0.15s;
+}
+
+.tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+.tab.active { color: var(--accent); }
+
+/* METER */
+.meter-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 12px;
+}
+
+.meter-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+
+.meter-total {
+  font-family: var(--serif);
+  font-size: 52px;
+  font-weight: 300;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.meter-unit {
+  font-size: 14px;
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.meter-limit {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.meter-track {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width 0.4s cubic-bezier(.4,0,.2,1), background 0.3s;
+}
+
+.meter-status {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+}
+
+/* STATS GRID */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.stat-cell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.stat-cell-label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.stat-cell-val {
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+}
+
+.stat-cell-unit {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+/* SECTION LABEL */
+.section-label {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 16px 0 8px;
+}
+
+/* ENTRY LIST */
+.entry-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.entry-item:last-child { border-bottom: none; }
+
+.entry-source {
+  font-size: 14px;
+  color: var(--text);
+  flex: 1;
+  margin-right: 8px;
+}
+
+.entry-meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.entry-mg {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.del-btn {
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0 0 0 10px;
+  transition: color 0.15s;
+}
+
+.del-btn:active { color: var(--danger); }
+
+.empty-state {
+  text-align: center;
+  color: var(--dim);
+  font-size: 13px;
+  padding: 32px 0;
+  letter-spacing: 0.04em;
+}
+
+/* PRESETS */
+.preset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.preset-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+  font-family: var(--mono);
+}
+
+.preset-btn:active {
+  background: var(--surface2);
+  border-color: var(--accent);
+}
+
+.preset-name {
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.preset-mg {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 300;
+  color: var(--accent);
+}
+
+.preset-mg-unit {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+
+/* CUSTOM FORM */
+.custom-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.custom-card .section-label { margin-top: 0; }
+
+.field-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.field-row input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+}
+
+.field-row input::placeholder { color: var(--dim); }
+.field-row input:focus { border-color: var(--border2); }
+
+.field-row input.mg-field { width: 90px; flex: 0 0 90px; }
+
+.add-btn {
+  width: 100%;
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: #0a0a0a;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: opacity 0.15s;
+}
+
+.add-btn:active { opacity: 0.75; }
+
+/* CHART */
+.chart-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.chart-title {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.bar-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 80px;
+}
+
+.bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.bar-fill {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  background: var(--accent);
+  opacity: 0.7;
+  transition: opacity 0.15s;
+  min-height: 2px;
+}
+
+.bar-fill.today { opacity: 1; }
+
+.bar-lbl {
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.02em;
+}
+
+/* HISTORY */
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.history-item:last-child { border-bottom: none; }
+.history-date { font-size: 13px; color: var(--muted); }
+.history-val { font-family: var(--serif); font-size: 20px; font-weight: 300; color: var(--text); }
+
+/* DOW chart */
+.dow-grid {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  height: 60px;
+}
+
+.dow-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.dow-bar {
+  width: 100%;
+  background: var(--accent2);
+  opacity: 0.7;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+}
+
+.dow-lbl { font-size: 9px; color: var(--dim); }
+
+/* SETTINGS */
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.setting-row:last-child { border-bottom: none; }
+.setting-label { font-size: 14px; color: var(--text); }
+.setting-hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+.setting-row input[type=number] {
+  width: 80px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 14px;
+  color: var(--text);
+  text-align: right;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.settings-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+
+.preset-edit-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.preset-edit-row:last-child { border-bottom: none; }
+
+.export-btn {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: border-color 0.15s;
+}
+
+.export-btn:active { border-color: var(--border2); }
+
+/* Scrollbar */
+.content::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="topbar">
+    <div class="topbar-row">
+      <div class="app-title">caffeine</div>
+      <div class="today-date" id="today-date"></div>
+    </div>
+  </div>
+
+  <div class="content">
+    <!-- TODAY -->
+    <div class="screen active" id="screen-today">
+      <div class="meter-card">
+        <div class="meter-top">
+          <div>
+            <span class="meter-total" id="meter-total">0</span>
+            <span class="meter-unit">mg</span>
+          </div>
+          <div class="meter-limit" id="meter-limit">/ 400 mg</div>
+        </div>
+        <div class="meter-track">
+          <div class="meter-fill" id="meter-fill" style="width:0%"></div>
+        </div>
+        <div class="meter-status" id="meter-status">no entries today</div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-cell">
+          <div class="stat-cell-label">7-day avg</div>
+          <div class="stat-cell-val" id="avg7">—<span class="stat-cell-unit"></span></div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-cell-label">Week high</div>
+          <div class="stat-cell-val" id="weekHigh">—<span class="stat-cell-unit"></span></div>
+        </div>
+      </div>
+
+      <div class="section-label">Today</div>
+      <div id="today-list"></div>
+    </div>
+
+    <!-- LOG -->
+    <div class="screen" id="screen-log">
+      <div class="section-label" style="margin-top:8px;">Quick add</div>
+      <div class="preset-grid" id="preset-grid"></div>
+
+      <div class="custom-card">
+        <div class="section-label">Custom entry</div>
+        <div class="field-row">
+          <input type="text" id="custom-source" placeholder="Source" autocomplete="off" autocorrect="off" />
+          <input type="number" id="custom-mg" class="mg-field" placeholder="mg" min="1" max="2000" />
+        </div>
+        <button class="add-btn" onclick="addCustom()">Add entry</button>
+      </div>
+
+      <div class="section-label">Recent</div>
+      <div id="recent-list"></div>
+    </div>
+
+    <!-- TRENDS -->
+    <div class="screen" id="screen-trends">
+      <div class="stats-grid" style="margin-top:8px;">
+        <div class="stat-cell">
+          <div class="stat-cell-label">All-time avg</div>
+          <div class="stat-cell-val" id="t-avg">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-cell-label">All-time high</div>
+          <div class="stat-cell-val" id="t-high">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-cell-label">Median</div>
+          <div class="stat-cell-val" id="t-med">—</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-cell-label">All-time low</div>
+          <div class="stat-cell-val" id="t-low">—</div>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">Last 14 days</div>
+        <div class="bar-chart" id="bar-chart"></div>
+      </div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">Avg by day of week</div>
+        <div class="dow-grid" id="dow-chart"></div>
+      </div>
+
+      <div class="section-label">History</div>
+      <div id="history-list"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="screen" id="screen-settings">
+      <div class="section-label" style="margin-top:8px;">Limits</div>
+      <div class="settings-card">
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Daily limit</div>
+            <div class="setting-hint">FDA recommends ≤400 mg/day</div>
+          </div>
+          <input type="number" id="limit-input" value="400" min="0" max="2000" onchange="saveLimit()" />
+        </div>
+      </div>
+
+      <div class="section-label">Presets</div>
+      <div class="settings-card" id="preset-edit-list"></div>
+
+      <div class="field-row" style="margin-bottom:8px; margin-top:8px;">
+        <input type="text" id="new-preset-name" placeholder="Preset name" autocomplete="off" />
+        <input type="number" id="new-preset-mg" class="mg-field" placeholder="mg" min="1" max="2000" />
+      </div>
+      <button class="add-btn" onclick="addPreset()" style="margin-bottom:16px;">Add preset</button>
+
+      <div class="section-label">Data</div>
+      <button class="export-btn" onclick="exportCSV()">⤓ Export CSV</button>
+    </div>
+  </div>
+
+  <nav class="tabbar">
+    <button class="tab active" id="tab-today" onclick="switchTab('today')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+      Today
+    </button>
+    <button class="tab" id="tab-log" onclick="switchTab('log')">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      Log
+    </button>
+    <button class="tab" id="tab-trends" onclick="switchTab('trends')">
+      <svg viewBox="0 0 24 24"><path d="M3 18l5-6 4 3 5-7 4 4"/></svg>
+      Trends
+    </button>
+    <button class="tab" id="tab-settings" onclick="switchTab('settings')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </nav>
+</div>
+
+<script>
+const STORAGE_KEY = 'caffeine_v2';
+const SETTINGS_KEY = 'caffeine_settings_v2';
+
+const DEFAULT_PRESETS = [
+  { name: '100mg pill', mg: 100 },
+  { name: 'Nespresso pod', mg: 75 },
+  { name: '16oz decaf', mg: 16 },
+  { name: '16oz drip', mg: 140 },
+  { name: 'Celsius', mg: 200 },
+  { name: 'Sparkling Ice', mg: 175 },
+  { name: '½ Celsius', mg: 100 },
+  { name: 'Dark choc ×2', mg: 5.4 },
+];
+
+const HISTORICAL = [
+  {d:'2026-05-04', entries:[{s:'2x 100mg pills',mg:200},{s:'16oz coffee 2/3 caf',mg:55},{s:'Nespresso pod',mg:75}]},
+  {d:'2026-05-05', entries:[{s:'2x 100mg pills',mg:200},{s:'16oz decaf',mg:16},{s:'1 100mg pill',mg:100},{s:'2x 100mg pills',mg:200}]},
+  {d:'2026-05-06', entries:[{s:'1x 100mg pill',mg:100},{s:'16oz decaf',mg:16},{s:'8oz drip',mg:100}]},
+  {d:'2026-05-07', entries:[{s:'2x 100mg pills',mg:200},{s:'16oz decaf',mg:16},{s:'1 100mg pill',mg:100}]},
+  {d:'2026-05-08', entries:[{s:'1x 100mg pill',mg:100},{s:'Nespresso pod',mg:75},{s:'1x 100mg pill',mg:100}]},
+  {d:'2026-05-09', entries:[{s:'1x 100mg pill',mg:100},{s:'1x 100mg pill',mg:100},{s:'16oz decaf',mg:16},{s:'8oz drip',mg:100}]},
+  {d:'2026-05-10', entries:[{s:'1x 100mg pill',mg:100},{s:'16oz decaf',mg:16},{s:'1x 100mg pill',mg:100},{s:'16oz decaf',mg:16}]},
+  {d:'2026-05-11', entries:[{s:'1 100mg pill',mg:100},{s:'2x 100mg pills',mg:200}]},
+  {d:'2026-05-12', entries:[{s:'1/2 100mg pill',mg:50},{s:'1tbsp caf + 3tbsp decaf 16oz',mg:75}]},
+  {d:'2026-05-13', entries:[{s:'1x 100mg pill',mg:100},{s:'16oz decaf',mg:18},{s:'16oz decaf',mg:16}]},
+  {d:'2026-05-14', entries:[{s:'16oz decaf',mg:18},{s:'1x 100mg pill',mg:100},{s:'16oz decaf',mg:16}]},
+  {d:'2026-05-15', entries:[{s:'1/2 100mg pill',mg:50},{s:'16oz decaf',mg:16}]},
+  {d:'2026-05-16', entries:[{s:'Celsius',mg:200},{s:'16oz decaf',mg:16},{s:'16oz decaf',mg:16},{s:'1/2 100mg pill',mg:50}]},
+  {d:'2026-05-17', entries:[{s:'Brewed coffee 1/2 caf 16oz',mg:140},{s:'2 squares dark choc',mg:5.4},{s:'16oz decaf',mg:16}]},
+  {d:'2026-05-18', entries:[{s:'1x 100mg pill',mg:100},{s:'16oz decaf',mg:16},{s:'2 squares dark choc',mg:5.4}]},
+  {d:'2026-05-19', entries:[{s:'2 squares dark choc',mg:5.4},{s:'2 squares dark choc',mg:5.4},{s:'Brewed coffee 1/2 caf 16oz',mg:140},{s:'1x 100mg pill',mg:100}]},
+  {d:'2026-05-20', entries:[{s:'1x 100mg pill',mg:100},{s:'1/2 Celsius',mg:100}]},
+  {d:'2026-05-21', entries:[{s:'1x 100mg pill',mg:100},{s:'2 squares dark choc',mg:5.4},{s:'16oz decaf',mg:16},{s:'1 square dark choc',mg:2.7},{s:'Nespresso pod',mg:75}]},
+];
+
+function load(key, def) {
+  try { return JSON.parse(localStorage.getItem(key)) || def; } catch { return def; }
+}
+function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+function todayStr() { return new Date().toISOString().slice(0,10); }
+
+function fmtDate(ds) {
+  const [,m,d] = ds.split('-');
+  const mn = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return mn[+m-1] + ' ' + +d;
+}
+
+function fmtDow(ds) {
+  return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(ds+'T12:00:00').getDay()];
+}
+
+let entries = load(STORAGE_KEY, []);
+let settings = load(SETTINGS_KEY, { limit: 400, presets: DEFAULT_PRESETS });
+
+// Seed historical if not present
+(function seed() {
+  const existing = new Set(entries.map(e => e.date));
+  HISTORICAL.forEach(day => {
+    if (!existing.has(day.d)) {
+      day.entries.forEach(en => {
+        entries.push({ date: day.d, source: en.s, mg: en.mg, time: '—' });
+      });
+    }
+  });
+  save(STORAGE_KEY, entries);
+})();
+
+function dailyTotals() {
+  const map = {};
+  entries.forEach(e => { map[e.date] = (map[e.date]||0) + e.mg; });
+  return map;
+}
+
+// ---- RENDER TODAY ----
+function renderToday() {
+  const today = todayStr();
+  const todayEntries = entries.filter(e => e.date === today).reverse();
+  const total = Math.round(todayEntries.reduce((s,e) => s+e.mg, 0));
+  const limit = settings.limit;
+  const pct = Math.min(100, (total/limit)*100);
+
+  document.getElementById('meter-total').textContent = total;
+  document.getElementById('meter-limit').textContent = '/ ' + limit + ' mg';
+
+  const fill = document.getElementById('meter-fill');
+  fill.style.width = pct + '%';
+  fill.style.background = pct >= 100 ? 'var(--danger)' : pct >= 75 ? 'var(--warn)' : 'var(--accent)';
+
+  const remaining = limit - total;
+  const status = document.getElementById('meter-status');
+  if (total === 0) status.textContent = 'no entries today';
+  else if (remaining > 0) status.textContent = Math.round(remaining) + ' mg remaining';
+  else status.textContent = 'over daily limit';
+
+  const dt = dailyTotals();
+  const last7 = [];
+  for (let i=0;i<7;i++) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const ds = d.toISOString().slice(0,10);
+    if (dt[ds] !== undefined) last7.push(dt[ds]);
+  }
+  const avg = last7.length ? Math.round(last7.reduce((a,b)=>a+b,0)/last7.length) : 0;
+  const hi = last7.length ? Math.round(Math.max(...last7)) : 0;
+  document.getElementById('avg7').innerHTML = avg + '<span class="stat-cell-unit"> mg</span>';
+  document.getElementById('weekHigh').innerHTML = hi + '<span class="stat-cell-unit"> mg</span>';
+
+  const list = document.getElementById('today-list');
+  list.innerHTML = '';
+  if (!todayEntries.length) {
+    list.innerHTML = '<div class="empty-state">nothing logged yet</div>';
+  } else {
+    todayEntries.forEach(e => {
+      const idx = entries.indexOf(e);
+      const row = document.createElement('div');
+      row.className = 'entry-item';
+      row.innerHTML = `<div class="entry-source">${e.source}<div class="entry-meta">${e.time||''}</div></div><span class="entry-mg">${Math.round(e.mg)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span><button class="del-btn" onclick="deleteEntry(${idx})">×</button>`;
+      list.appendChild(row);
+    });
+  }
+}
+
+// ---- RENDER LOG ----
+function renderLog() {
+  const pg = document.getElementById('preset-grid');
+  pg.innerHTML = '';
+  settings.presets.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn';
+    btn.innerHTML = `<div class="preset-name">${p.name}</div><span class="preset-mg">${p.mg}</span><span class="preset-mg-unit"> mg</span>`;
+    btn.onclick = () => addEntry(p.name, p.mg);
+    pg.appendChild(btn);
+  });
+
+  const recent = [...entries].reverse().slice(0,12);
+  const list = document.getElementById('recent-list');
+  list.innerHTML = '';
+  if (!recent.length) {
+    list.innerHTML = '<div class="empty-state">no entries yet</div>';
+  } else {
+    recent.forEach(e => {
+      const idx = entries.indexOf(e);
+      const row = document.createElement('div');
+      row.className = 'entry-item';
+      row.innerHTML = `<div class="entry-source">${e.source}<div class="entry-meta">${fmtDate(e.date)}</div></div><span class="entry-mg">${Math.round(e.mg)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span><button class="del-btn" onclick="deleteEntry(${idx});renderLog();">×</button>`;
+      list.appendChild(row);
+    });
+  }
+}
+
+// ---- RENDER TRENDS ----
+function renderTrends() {
+  const dt = dailyTotals();
+  const vals = Object.values(dt);
+  if (vals.length) {
+    const sorted = [...vals].sort((a,b)=>a-b);
+    const med = sorted.length%2===0 ? (sorted[sorted.length/2-1]+sorted[sorted.length/2])/2 : sorted[Math.floor(sorted.length/2)];
+    document.getElementById('t-avg').innerHTML = Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) + '<span class="stat-cell-unit"> mg</span>';
+    document.getElementById('t-high').innerHTML = Math.round(Math.max(...vals)) + '<span class="stat-cell-unit"> mg</span>';
+    document.getElementById('t-med').innerHTML = Math.round(med) + '<span class="stat-cell-unit"> mg</span>';
+    document.getElementById('t-low').innerHTML = Math.round(Math.min(...vals)) + '<span class="stat-cell-unit"> mg</span>';
+  }
+
+  // 14-day bar chart
+  const today = new Date();
+  const labels=[], data=[];
+  for (let i=13;i>=0;i--) {
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const ds = d.toISOString().slice(0,10);
+    labels.push(i===0 ? 'today' : fmtDow(ds));
+    data.push(Math.round(dt[ds]||0));
+  }
+  const max14 = Math.max(...data, 1);
+  const bc = document.getElementById('bar-chart');
+  bc.innerHTML = '';
+  data.forEach((v,i) => {
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    const h = Math.round((v/max14)*80);
+    col.innerHTML = `<div class="bar-fill${i===13?' today':''}" style="height:${h}px"></div><div class="bar-lbl">${labels[i]}</div>`;
+    bc.appendChild(col);
+  });
+
+  // DOW chart
+  const dowSums=[0,0,0,0,0,0,0], dowCounts=[0,0,0,0,0,0,0];
+  Object.entries(dt).forEach(([ds,total]) => {
+    const dow = new Date(ds+'T12:00:00').getDay();
+    dowSums[dow]+=total; dowCounts[dow]++;
+  });
+  const dowAvgs = dowSums.map((s,i) => dowCounts[i] ? Math.round(s/dowCounts[i]) : 0);
+  const orderedAvgs = [dowAvgs[1],dowAvgs[2],dowAvgs[3],dowAvgs[4],dowAvgs[5],dowAvgs[6],dowAvgs[0]];
+  const orderedLabels = ['M','T','W','T','F','S','S'];
+  const maxDow = Math.max(...orderedAvgs, 1);
+  const dc = document.getElementById('dow-chart');
+  dc.innerHTML = '';
+  orderedAvgs.forEach((v,i) => {
+    const col = document.createElement('div');
+    col.className = 'dow-col';
+    const h = Math.round((v/maxDow)*60);
+    col.innerHTML = `<div class="dow-bar" style="height:${h}px"></div><div class="dow-lbl">${orderedLabels[i]}</div>`;
+    dc.appendChild(col);
+  });
+
+  // History list
+  const allDates = Object.keys(dt).sort().reverse().slice(0,30);
+  const hl = document.getElementById('history-list');
+  hl.innerHTML = '';
+  allDates.forEach(ds => {
+    const row = document.createElement('div');
+    row.className = 'history-item';
+    row.innerHTML = `<span class="history-date">${fmtDate(ds)} <span style="color:var(--dim)">${fmtDow(ds)}</span></span><span class="history-val">${Math.round(dt[ds])} <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">mg</span></span>`;
+    hl.appendChild(row);
+  });
+}
+
+// ---- RENDER SETTINGS ----
+function renderSettings() {
+  document.getElementById('limit-input').value = settings.limit;
+  const list = document.getElementById('preset-edit-list');
+  list.innerHTML = '';
+  settings.presets.forEach((p,i) => {
+    const row = document.createElement('div');
+    row.className = 'preset-edit-row';
+    row.innerHTML = `<span style="color:var(--text)">${p.name}</span><span style="display:flex;align-items:center;gap:12px;"><span style="color:var(--muted)">${p.mg} mg</span><button onclick="removePreset(${i})" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:18px;line-height:1">×</button></span>`;
+    list.appendChild(row);
+  });
+}
+
+// ---- ACTIONS ----
+function switchTab(tab) {
+  ['today','log','trends','settings'].forEach(t => {
+    document.getElementById('screen-'+t).classList.toggle('active', t===tab);
+    document.getElementById('tab-'+t).classList.toggle('active', t===tab);
+  });
+  if (tab==='today') renderToday();
+  if (tab==='log') renderLog();
+  if (tab==='trends') renderTrends();
+  if (tab==='settings') renderSettings();
+}
+
+function addEntry(source, mg) {
+  const now = new Date();
+  const time = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  entries.push({ date: todayStr(), source, mg: parseFloat(mg), time });
+  save(STORAGE_KEY, entries);
+  switchTab('today');
+}
+
+function addCustom() {
+  const s = document.getElementById('custom-source').value.trim();
+  const m = parseFloat(document.getElementById('custom-mg').value);
+  if (!s || isNaN(m) || m<=0) { alert('Enter a name and mg amount.'); return; }
+  addEntry(s, m);
+  document.getElementById('custom-source').value = '';
+  document.getElementById('custom-mg').value = '';
+}
+
+function deleteEntry(i) {
+  entries.splice(i, 1);
+  save(STORAGE_KEY, entries);
+  renderToday();
+}
+
+function saveLimit() {
+  settings.limit = parseInt(document.getElementById('limit-input').value) || 400;
+  save(SETTINGS_KEY, settings);
+}
+
+function addPreset() {
+  const name = document.getElementById('new-preset-name').value.trim();
+  const mg = parseFloat(document.getElementById('new-preset-mg').value);
+  if (!name || isNaN(mg) || mg<=0) return;
+  settings.presets.push({ name, mg });
+  save(SETTINGS_KEY, settings);
+  document.getElementById('new-preset-name').value = '';
+  document.getElementById('new-preset-mg').value = '';
+  renderSettings();
+  renderLog();
+}
+
+function removePreset(i) {
+  settings.presets.splice(i, 1);
+  save(SETTINGS_KEY, settings);
+  renderSettings();
+  renderLog();
+}
+
+function exportCSV() {
+  const rows = ['Date,Source,MG'];
+  [...entries].sort((a,b)=>a.date.localeCompare(b.date)).forEach(e => {
+    rows.push(`${e.date},"${e.source.replace(/"/g,'""')}",${e.mg}`);
+  });
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='caffeine_log.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Init
+document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).toUpperCase();
+renderToday();
+</script>
+</body>
+</html>
