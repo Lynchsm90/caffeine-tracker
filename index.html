@@ -510,6 +510,35 @@ html, body {
 
 .preset-edit-row:last-child { border-bottom: none; }
 
+.tag-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tag-btn.active { color: var(--accent); border-color: var(--accent); }
+
+.qty-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s;
+}
+.qty-btn:active { border-color: var(--accent); color: var(--accent); }
+
 .range-btn {
   background: var(--surface2);
   border: 1px solid var(--border);
@@ -589,20 +618,101 @@ html, body {
 
     <!-- LOG -->
     <div class="screen" id="screen-log">
-      <div class="section-label" style="margin-top:8px;">Quick add</div>
-      <div class="preset-grid" id="preset-grid"></div>
-
-      <div class="custom-card">
-        <div class="section-label">Custom entry</div>
-        <div class="field-row">
-          <input type="text" id="custom-source" placeholder="Source" autocomplete="off" autocorrect="off" />
-          <input type="number" id="custom-mg" class="mg-field" placeholder="mg" min="1" max="2000" />
-        </div>
-        <button class="add-btn" onclick="addCustom()">Add entry</button>
+      <!-- TAGS -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 10px;">
+        <button class="tag-btn active" onclick="setTag('all')">All</button>
+        <button class="tag-btn" onclick="setTag('pill')">💊 Pill</button>
+        <button class="tag-btn" onclick="setTag('coffee')">☕ Coffee</button>
+        <button class="tag-btn" onclick="setTag('energy')">⚡ Energy</button>
+        <button class="tag-btn" onclick="setTag('food')">🍫 Food</button>
+        <button class="tag-btn" onclick="setTag('other')">· · · Other</button>
       </div>
 
-      <div class="section-label">Recent</div>
-      <div id="recent-list"></div>
+      <!-- SEARCH -->
+      <input type="text" id="source-search" placeholder="Search sources…" autocomplete="off" autocorrect="off"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;margin-bottom:8px;"
+        oninput="renderSourceList()" />
+
+      <!-- SOURCE LIST -->
+      <div id="source-list" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;"></div>
+
+      <!-- QUANTITY CARD -->
+      <div class="custom-card" id="quantity-card" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+          <div>
+            <div class="section-label" style="margin:0 0 2px;">Selected</div>
+            <div id="selected-source-name" style="font-size:15px;color:var(--text);"></div>
+            <div id="selected-source-base" style="font-size:12px;color:var(--muted);margin-top:2px;"></div>
+          </div>
+          <button onclick="clearSelection()" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:20px;line-height:1;padding:0;">×</button>
+        </div>
+        <div class="section-label" style="margin-top:0;">Quantity</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <button onclick="adjustQty(-0.5)" class="qty-btn">−½</button>
+          <button onclick="adjustQty(-0.1)" class="qty-btn">−.1</button>
+          <div style="flex:1;text-align:center;">
+            <input type="number" id="qty-input" value="1" min="0.1" step="0.1"
+              style="width:80px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:var(--serif);font-size:22px;color:var(--text);outline:none;"
+              oninput="updateMgPreview()" />
+          </div>
+          <button onclick="adjustQty(0.1)" class="qty-btn">+.1</button>
+          <button onclick="adjustQty(0.5)" class="qty-btn">+½</button>
+        </div>
+        <div id="mg-preview" style="text-align:center;font-size:13px;color:var(--muted);margin-bottom:14px;letter-spacing:0.04em;"></div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <div style="flex:1;">
+            <div class="section-label" style="margin-top:0;">Time</div>
+            <input type="time" id="log-time"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
+          </div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <div class="section-label" style="margin-top:0;">Note <span style="color:var(--dim);font-size:9px;">(optional)</span></div>
+          <input type="text" id="log-note" placeholder="e.g. felt jittery, bad sleep…" autocomplete="off" autocorrect="off"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;" />
+        </div>
+        <button class="add-btn" onclick="addFromPicker()">Add entry</button>
+      </div>
+
+      <!-- NEW SOURCE FORM (always at bottom, collapsed by default) -->
+      <div style="margin-top:4px;">
+        <button id="new-source-toggle" onclick="toggleNewSource()"
+          style="width:100%;background:none;border:1px dashed var(--border);border-radius:10px;padding:12px;font-family:var(--mono);font-size:12px;color:var(--dim);cursor:pointer;letter-spacing:0.06em;text-transform:uppercase;transition:border-color 0.15s;">
+          + New source
+        </button>
+        <div class="custom-card" id="new-source-card" style="display:none;margin-top:8px;">
+          <div class="section-label" style="margin-top:0;">New source</div>
+          <div class="field-row" style="margin-bottom:8px;">
+            <input type="text" id="new-source-name" placeholder="Name" autocomplete="off" autocorrect="off"
+              style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
+            <input type="number" id="new-source-mg" class="mg-field" placeholder="mg" min="0.1" max="2000" step="0.1"
+              oninput="updateNewMgPreview()"
+              style="width:80px;flex:0 0 80px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 10px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
+          </div>
+          <div class="section-label" style="margin-top:0;">Category</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;" id="new-source-tags">
+            <button class="tag-btn active" onclick="setNewTag('pill')">💊 Pill</button>
+            <button class="tag-btn" onclick="setNewTag('coffee')">☕ Coffee</button>
+            <button class="tag-btn" onclick="setNewTag('energy')">⚡ Energy</button>
+            <button class="tag-btn" onclick="setNewTag('food')">🍫 Food</button>
+            <button class="tag-btn" onclick="setNewTag('other')">· · · Other</button>
+          </div>
+          <div id="new-mg-preview" style="font-size:12px;color:var(--muted);margin-bottom:10px;"></div>
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <div style="flex:1;">
+              <div class="section-label" style="margin-top:0;">Time</div>
+              <input type="time" id="new-log-time"
+                style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
+            </div>
+          </div>
+          <div style="margin-bottom:14px;">
+            <div class="section-label" style="margin-top:0;">Note <span style="color:var(--dim);font-size:9px;">(optional)</span></div>
+            <input type="text" id="new-log-note" placeholder="optional note…" autocomplete="off"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;" />
+          </div>
+          <button class="add-btn" onclick="addNewSource()">Add &amp; log entry</button>
+        </div>
+      </div>
     </div>
 
     <!-- TRENDS -->
@@ -705,6 +815,23 @@ html, body {
       Settings
     </button>
   </nav>
+
+  <!-- EDIT MODAL -->
+  <div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;align-items:flex-end;justify-content:center;">
+    <div style="background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:430px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:14px;color:var(--text);font-weight:500;" id="edit-modal-title"></div>
+        <button onclick="closeEditModal()" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:22px;line-height:1;">×</button>
+      </div>
+      <div class="section-label" style="margin-top:0;">Time consumed</div>
+      <input type="time" id="edit-time"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:15px;color:var(--text);outline:none;margin-bottom:16px;" />
+      <div class="section-label" style="margin-top:0;">Note <span style="color:var(--dim);font-size:9px;">(optional)</span></div>
+      <input type="text" id="edit-note" placeholder="add a note…" autocomplete="off"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;margin-bottom:20px;" />
+      <button class="add-btn" onclick="saveEdit()">Save changes</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -819,7 +946,7 @@ let settings = loadSettings();
 async function fetchEntries() {
   const { data, error } = await sb.from('entries').select('*').order('created_at', { ascending: true });
   if (error) { showStatus('sync error', true); return; }
-  entries = data.map(r => ({ id: r.id, date: r.date, source: r.source, mg: parseFloat(r.mg), time: r.time || '—' }));
+  entries = data.map(r => ({ id: r.id, date: r.date, source: r.source, mg: parseFloat(r.mg), time: r.time || '—', note: r.note || '' }));
 }
 
 async function seedHistoricalIfNeeded() {
@@ -837,10 +964,16 @@ async function seedHistoricalIfNeeded() {
 
 async function insertEntry(entry) {
   const { data, error } = await sb.from('entries').insert([{
-    date: entry.date, source: entry.source, mg: entry.mg, time: entry.time
+    date: entry.date, source: entry.source, mg: entry.mg, time: entry.time, note: entry.note || null
   }]).select().single();
   if (error) { showStatus('save failed', true); return null; }
   return data;
+}
+
+async function updateEntry(id, fields) {
+  const { error } = await sb.from('entries').update(fields).eq('id', id);
+  if (error) { showStatus('update failed', true); return false; }
+  return true;
 }
 
 async function removeEntry(id) {
@@ -893,42 +1026,246 @@ function renderToday() {
     list.innerHTML = '<div class="empty-state">nothing logged yet</div>';
   } else {
     todayEntries.forEach(e => {
-      const idx = entries.indexOf(e);
       const row = document.createElement('div');
       row.className = 'entry-item';
-      row.innerHTML = `<div class="entry-source">${e.source}<div class="entry-meta">${e.time||''}</div></div><span class="entry-mg">${parseFloat(e.mg).toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span><button class="del-btn" onclick="deleteEntry('${e.id}')">×</button>`;
+      row.style.cursor = 'pointer';
+      const noteHtml = e.note ? `<div class="entry-meta" style="color:var(--accent);opacity:0.7;">${e.note}</div>` : '';
+      row.innerHTML = `
+        <div class="entry-source" onclick="openEditModal('${e.id}')" style="flex:1;">
+          ${e.source}
+          <div class="entry-meta">${e.time||'—'}</div>
+          ${noteHtml}
+        </div>
+        <span class="entry-mg" onclick="openEditModal('${e.id}')">${parseFloat(e.mg).toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span>
+        <button class="del-btn" onclick="deleteEntry('${e.id}')">×</button>`;
       list.appendChild(row);
     });
   }
 }
 
 // ---- RENDER LOG ----
-function renderLog() {
-  const pg = document.getElementById('preset-grid');
-  pg.innerHTML = '';
+let selectedSource = null;
+let activeTag = 'all';
+let newSourceTag = 'pill';
+
+const SOURCE_TAGS = {
+  '100mg pill': 'pill', '1/2 100mg pill': 'pill', '2x 100mg pills': 'pill',
+  '1x 100mg pill': 'pill', '1 100mg pill': 'pill',
+  'Nespresso pod': 'coffee', '16oz decaf': 'coffee', '16oz drip': 'coffee',
+  '8oz drip': 'coffee', 'Brewed coffee 1/2 caf 16oz': 'coffee',
+  '1tbsp caf + 3tbsp decaf 16oz': 'coffee', '16oz coffee 2/3 caf': 'coffee',
+  'Half-caf 16oz': 'coffee',
+  'Celsius': 'energy', '1/2 Celsius': 'energy', '½ Celsius': 'energy',
+  'Sparkling Ice': 'energy', 'Sparkling ICE drink': 'energy',
+  '2 squares dark choc': 'food', '1 square dark choc': 'food', 'Dark choc ×2': 'food',
+};
+
+function getTagForSource(name) {
+  if (SOURCE_TAGS[name]) return SOURCE_TAGS[name];
+  const n = name.toLowerCase();
+  if (n.includes('pill') || n.includes('mg pill') || n.includes('tablet') || n.includes('capsule')) return 'pill';
+  if (n.includes('coffee') || n.includes('espresso') || n.includes('decaf') || n.includes('nespresso') || n.includes('drip') || n.includes('latte') || n.includes('cold brew') || n.includes('caf')) return 'coffee';
+  if (n.includes('celsius') || n.includes('sparkling ice') || n.includes('energy') || n.includes('monster') || n.includes('red bull') || n.includes('bang') || n.includes('reign')) return 'energy';
+  if (n.includes('choc') || n.includes('tea') || n.includes('matcha') || n.includes('food')) return 'food';
+  return 'other';
+}
+
+function getKnownSources() {
+  const seen = new Map();
+  [...entries].reverse().forEach(e => {
+    const base = e.source.replace(/^[\d.]+×\s*/, '');
+    if (!seen.has(base)) seen.set(base, e.mg);
+  });
   settings.presets.forEach(p => {
-    const btn = document.createElement('button');
-    btn.className = 'preset-btn';
-    btn.innerHTML = `<div class="preset-name">${p.name}</div><span class="preset-mg">${p.mg}</span><span class="preset-mg-unit"> mg</span>`;
-    btn.onclick = () => addEntry(p.name, p.mg);
-    pg.appendChild(btn);
+    if (!seen.has(p.name)) seen.set(p.name, p.mg);
+  });
+  return Array.from(seen.entries()).map(([name, mg]) => ({
+    name, baseMg: mg, tag: getTagForSource(name)
+  }));
+}
+
+function setTag(tag) {
+  activeTag = tag;
+  document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
+  // only first row of tag buttons (not the new-source-tags)
+  const mainTags = document.querySelectorAll('#screen-log > div:first-child .tag-btn');
+  const tags = ['all','pill','coffee','energy','food','other'];
+  // target by index in the tag row
+  document.querySelectorAll('#screen-log > div:first-child .tag-btn')[tags.indexOf(tag)]?.classList.add('active');
+  renderSourceList();
+}
+
+function renderLog() {
+  activeTag = 'all';
+  document.querySelectorAll('#screen-log > div:first-child .tag-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+  renderSourceList();
+}
+
+function renderSourceList() {
+  const q = (document.getElementById('source-search').value || '').toLowerCase().trim();
+  const sources = getKnownSources();
+  const filtered = sources.filter(s => {
+    const tagMatch = activeTag === 'all' || s.tag === activeTag;
+    const searchMatch = !q || s.name.toLowerCase().includes(q);
+    return tagMatch && searchMatch;
   });
 
-  const recent = [...entries].reverse().slice(0,12);
-  const list = document.getElementById('recent-list');
+  const list = document.getElementById('source-list');
   list.innerHTML = '';
-  if (!recent.length) {
-    list.innerHTML = '<div class="empty-state">no entries yet</div>';
+
+  if (!filtered.length) {
+    list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--dim);font-size:13px;">no sources found</div>';
+    return;
+  }
+
+  filtered.forEach(s => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;';
+    row.innerHTML = `<span style="font-size:14px;color:var(--text);">${s.name}</span><span style="font-size:12px;color:var(--muted);">${s.baseMg} mg</span>`;
+    row.onclick = () => selectSource(s);
+    list.appendChild(row);
+  });
+  // remove last border
+  if (list.lastChild) list.lastChild.style.borderBottom = 'none';
+}
+
+function selectSource(s) {
+  selectedSource = s;
+  document.getElementById('selected-source-name').textContent = s.name;
+  document.getElementById('selected-source-base').textContent = `base: ${s.baseMg} mg`;
+  document.getElementById('qty-input').value = '1';
+  document.getElementById('quantity-card').style.display = 'block';
+  setDefaultTime('log-time');
+  updateMgPreview();
+  // scroll to quantity card
+  document.getElementById('quantity-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function clearSelection() {
+  selectedSource = null;
+  document.getElementById('quantity-card').style.display = 'none';
+}
+
+function adjustQty(delta) {
+  const input = document.getElementById('qty-input');
+  const val = Math.max(0.1, Math.round((parseFloat(input.value || 1) + delta) * 10) / 10);
+  input.value = val;
+  updateMgPreview();
+}
+
+function updateMgPreview() {
+  if (!selectedSource) return;
+  const qty = parseFloat(document.getElementById('qty-input').value) || 1;
+  const total = Math.round(selectedSource.baseMg * qty * 10) / 10;
+  document.getElementById('mg-preview').textContent = `${qty} × ${selectedSource.baseMg} mg = ${total.toFixed(1)} mg`;
+}
+
+function toggleNewSource() {
+  const card = document.getElementById('new-source-card');
+  const isHidden = card.style.display === 'none';
+  card.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) { setDefaultTime('new-log-time'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+}
+
+function setNewTag(tag) {
+  newSourceTag = tag;
+  document.querySelectorAll('#new-source-tags .tag-btn').forEach(b => b.classList.remove('active'));
+  const tags = ['pill','coffee','energy','food','other'];
+  document.querySelectorAll('#new-source-tags .tag-btn')[tags.indexOf(tag)]?.classList.add('active');
+}
+
+function updateNewMgPreview() {
+  const mg = parseFloat(document.getElementById('new-source-mg').value);
+  document.getElementById('new-mg-preview').textContent = isNaN(mg) ? '' : `Will log ${mg.toFixed(1)} mg`;
+}
+
+async function addFromPicker() {
+  if (!selectedSource) return;
+  const qty = parseFloat(document.getElementById('qty-input').value) || 1;
+  const mg = Math.round(selectedSource.baseMg * qty * 10) / 10;
+  const label = qty === 1 ? selectedSource.name : `${qty}× ${selectedSource.name}`;
+  const timeVal = document.getElementById('log-time').value
+    ? fmtTimeInput(document.getElementById('log-time').value) : null;
+  const note = document.getElementById('log-note').value.trim();
+  await addEntry(label, mg, timeVal, note);
+  document.getElementById('log-note').value = '';
+  clearSelection();
+}
+
+async function addNewSource() {
+  const name = document.getElementById('new-source-name').value.trim();
+  const mg = parseFloat(document.getElementById('new-source-mg').value);
+  if (!name || isNaN(mg) || mg <= 0) { alert('Enter a name and mg amount.'); return; }
+  SOURCE_TAGS[name] = newSourceTag;
+  const timeVal = document.getElementById('new-log-time').value
+    ? fmtTimeInput(document.getElementById('new-log-time').value) : null;
+  const note = document.getElementById('new-log-note').value.trim();
+  await addEntry(name, mg, timeVal, note);
+  document.getElementById('new-source-card').style.display = 'none';
+  document.getElementById('new-source-name').value = '';
+  document.getElementById('new-source-mg').value = '';
+  document.getElementById('new-log-note').value = '';
+  document.getElementById('new-mg-preview').textContent = '';
+  renderSourceList();
+}
+
+// Set default time to now when source is selected
+function setDefaultTime(inputId) {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById(inputId).value = `${h}:${m}`;
+}
+
+// ---- EDIT MODAL ----
+let editingId = null;
+
+function openEditModal(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e) return;
+  editingId = id;
+  document.getElementById('edit-modal-title').textContent = e.source;
+  // parse existing time back to HH:MM if possible
+  const timeMatch = (e.time || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (timeMatch) {
+    let h = parseInt(timeMatch[1]);
+    const min = timeMatch[2];
+    const ampm = timeMatch[3].toUpperCase();
+    if (ampm === 'PM' && h !== 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    document.getElementById('edit-time').value = `${String(h).padStart(2,'0')}:${min}`;
   } else {
-    recent.forEach(e => {
-      const idx = entries.indexOf(e);
-      const row = document.createElement('div');
-      row.className = 'entry-item';
-      row.innerHTML = `<div class="entry-source">${e.source}<div class="entry-meta">${fmtDate(e.date)}</div></div><span class="entry-mg">${parseFloat(e.mg).toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span><button class="del-btn" onclick="deleteEntry('${e.id}');renderLog();">×</button>`;
-      list.appendChild(row);
-    });
+    setDefaultTime('edit-time');
+  }
+  document.getElementById('edit-note').value = e.note || '';
+  const modal = document.getElementById('edit-modal');
+  modal.style.display = 'flex';
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').style.display = 'none';
+  editingId = null;
+}
+
+async function saveEdit() {
+  if (!editingId) return;
+  const timeVal = document.getElementById('edit-time').value
+    ? fmtTimeInput(document.getElementById('edit-time').value) : '—';
+  const note = document.getElementById('edit-note').value.trim();
+  const ok = await updateEntry(editingId, { time: timeVal, note });
+  if (ok) {
+    const e = entries.find(x => x.id === editingId);
+    if (e) { e.time = timeVal; e.note = note; }
+    showStatus('saved');
+    closeEditModal();
+    renderToday();
   }
 }
+
+// close modal on backdrop tap
+document.getElementById('edit-modal').addEventListener('click', function(ev) {
+  if (ev.target === this) closeEditModal();
+});
 
 // ---- RENDER TRENDS ----
 function renderTrends() {
@@ -1072,26 +1409,18 @@ function switchTab(tab) {
   if (tab==='settings') renderSettings();
 }
 
-async function addEntry(source, mg) {
+async function addEntry(source, mg, timeVal, note) {
   const now = new Date();
-  const time = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-  const entry = { date: todayStr(), source, mg: parseFloat(mg), time };
+  const defaultTime = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  const time = timeVal || defaultTime;
+  const entry = { date: todayStr(), source, mg: parseFloat(mg), time, note: note || '' };
   showStatus('saving…');
   const saved = await insertEntry(entry);
   if (saved) {
-    entries.push({ id: saved.id, date: saved.date, source: saved.source, mg: parseFloat(saved.mg), time: saved.time });
+    entries.push({ id: saved.id, date: saved.date, source: saved.source, mg: parseFloat(saved.mg), time: saved.time, note: saved.note || '' });
     showStatus('saved');
     switchTab('today');
   }
-}
-
-async function addCustom() {
-  const s = document.getElementById('custom-source').value.trim();
-  const m = parseFloat(document.getElementById('custom-mg').value);
-  if (!s || isNaN(m) || m<=0) { alert('Enter a name and mg amount.'); return; }
-  await addEntry(s, m);
-  document.getElementById('custom-source').value = '';
-  document.getElementById('custom-mg').value = '';
 }
 
 async function deleteEntry(id) {
