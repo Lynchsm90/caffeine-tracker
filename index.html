@@ -708,8 +708,12 @@ html, body {
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const STORAGE_KEY = 'caffeine_v2';
+const SUPABASE_URL = 'https://safdzjtmqrveaprtfsus.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhZmR6anRtcXJ2ZWFwcnRmc3VzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0Njc5OTIsImV4cCI6MjA5NTA0Mzk5Mn0.rzOwtkUtpo7RJSHXanyvmNewJxytxLYBHDeZiTFcDHA';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const SETTINGS_KEY = 'caffeine_settings_v2';
 
 const DEFAULT_PRESETS = [
@@ -776,11 +780,10 @@ function applyCustomRange() {
   if (customFrom && customTo) renderTrends();
 }
 
-
-function load(key, def) {
-  try { return JSON.parse(localStorage.getItem(key)) || def; } catch { return def; }
+function loadSettings() {
+  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || { limit: 400, presets: DEFAULT_PRESETS }; } catch { return { limit: 400, presets: DEFAULT_PRESETS }; }
 }
-function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
 
 function todayStr() { return new Date().toISOString().slice(0,10); }
 
@@ -794,21 +797,56 @@ function fmtDow(ds) {
   return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(ds+'T12:00:00').getDay()];
 }
 
-let entries = load(STORAGE_KEY, []);
-let settings = load(SETTINGS_KEY, { limit: 400, presets: DEFAULT_PRESETS });
+function showStatus(msg, isError=false) {
+  let el = document.getElementById('sync-status');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sync-status';
+    el.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:11px;z-index:999;letter-spacing:0.04em;transition:opacity 0.3s;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+  el.style.opacity = '1';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = '0'; }, 2000);
+}
 
-// Seed historical if not present
-(function seed() {
-  const existing = new Set(entries.map(e => e.date));
+let entries = [];
+let settings = loadSettings();
+
+// ---- SUPABASE DATA LAYER ----
+async function fetchEntries() {
+  const { data, error } = await sb.from('entries').select('*').order('created_at', { ascending: true });
+  if (error) { showStatus('sync error', true); return; }
+  entries = data.map(r => ({ id: r.id, date: r.date, source: r.source, mg: parseFloat(r.mg), time: r.time || '—' }));
+}
+
+async function seedHistoricalIfNeeded() {
+  const { count } = await sb.from('entries').select('*', { count: 'exact', head: true });
+  if (count > 0) return;
+  const rows = [];
   HISTORICAL.forEach(day => {
-    if (!existing.has(day.d)) {
-      day.entries.forEach(en => {
-        entries.push({ date: day.d, source: en.s, mg: en.mg, time: '—' });
-      });
-    }
+    day.entries.forEach(en => {
+      rows.push({ date: day.d, source: en.s, mg: en.mg, time: '—' });
+    });
   });
-  save(STORAGE_KEY, entries);
-})();
+  await sb.from('entries').insert(rows);
+  showStatus('historical data loaded');
+}
+
+async function insertEntry(entry) {
+  const { data, error } = await sb.from('entries').insert([{
+    date: entry.date, source: entry.source, mg: entry.mg, time: entry.time
+  }]).select().single();
+  if (error) { showStatus('save failed', true); return null; }
+  return data;
+}
+
+async function removeEntry(id) {
+  const { error } = await sb.from('entries').delete().eq('id', id);
+  if (error) { showStatus('delete failed', true); }
+}
 
 function dailyTotals() {
   const map = {};
@@ -858,7 +896,7 @@ function renderToday() {
       const idx = entries.indexOf(e);
       const row = document.createElement('div');
       row.className = 'entry-item';
-      row.innerHTML = `<div class="entry-source">${e.source}<div class="entry-meta">${e.time||''}</div></div><span class="entry-mg">${parseFloat(e.mg).toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span><button class="del-btn" onclick="deleteEntry(${idx})">×</button>`;
+      row.innerHTML = `<div class="entry-source">${e.source}<div class="entry-meta">${e.time||''}</div></div><span class="entry-mg">${parseFloat(e.mg).toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span><button class="del-btn" onclick="deleteEntry('${e.id}')">×</button>`;
       list.appendChild(row);
     });
   }
@@ -886,7 +924,7 @@ function renderLog() {
       const idx = entries.indexOf(e);
       const row = document.createElement('div');
       row.className = 'entry-item';
-      row.innerHTML = `<div class="entry-source">${e.source}<div class="entry-meta">${fmtDate(e.date)}</div></div><span class="entry-mg">${parseFloat(e.mg).toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span><button class="del-btn" onclick="deleteEntry(${idx});renderLog();">×</button>`;
+      row.innerHTML = `<div class="entry-source">${e.source}<div class="entry-meta">${fmtDate(e.date)}</div></div><span class="entry-mg">${parseFloat(e.mg).toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span><button class="del-btn" onclick="deleteEntry('${e.id}');renderLog();">×</button>`;
       list.appendChild(row);
     });
   }
@@ -1034,32 +1072,39 @@ function switchTab(tab) {
   if (tab==='settings') renderSettings();
 }
 
-function addEntry(source, mg) {
+async function addEntry(source, mg) {
   const now = new Date();
   const time = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-  entries.push({ date: todayStr(), source, mg: parseFloat(mg), time });
-  save(STORAGE_KEY, entries);
-  switchTab('today');
+  const entry = { date: todayStr(), source, mg: parseFloat(mg), time };
+  showStatus('saving…');
+  const saved = await insertEntry(entry);
+  if (saved) {
+    entries.push({ id: saved.id, date: saved.date, source: saved.source, mg: parseFloat(saved.mg), time: saved.time });
+    showStatus('saved');
+    switchTab('today');
+  }
 }
 
-function addCustom() {
+async function addCustom() {
   const s = document.getElementById('custom-source').value.trim();
   const m = parseFloat(document.getElementById('custom-mg').value);
   if (!s || isNaN(m) || m<=0) { alert('Enter a name and mg amount.'); return; }
-  addEntry(s, m);
+  await addEntry(s, m);
   document.getElementById('custom-source').value = '';
   document.getElementById('custom-mg').value = '';
 }
 
-function deleteEntry(i) {
-  entries.splice(i, 1);
-  save(STORAGE_KEY, entries);
+async function deleteEntry(id) {
+  await removeEntry(id);
+  entries = entries.filter(e => e.id !== id);
   renderToday();
+  renderLog();
 }
 
 function saveLimit() {
   settings.limit = parseInt(document.getElementById('limit-input').value) || 400;
-  save(SETTINGS_KEY, settings);
+  saveSettings(settings);
+  renderToday();
 }
 
 function addPreset() {
@@ -1067,7 +1112,7 @@ function addPreset() {
   const mg = parseFloat(document.getElementById('new-preset-mg').value);
   if (!name || isNaN(mg) || mg<=0) return;
   settings.presets.push({ name, mg });
-  save(SETTINGS_KEY, settings);
+  saveSettings(settings);
   document.getElementById('new-preset-name').value = '';
   document.getElementById('new-preset-mg').value = '';
   renderSettings();
@@ -1076,7 +1121,7 @@ function addPreset() {
 
 function removePreset(i) {
   settings.presets.splice(i, 1);
-  save(SETTINGS_KEY, settings);
+  saveSettings(settings);
   renderSettings();
   renderLog();
 }
@@ -1093,9 +1138,16 @@ function exportCSV() {
   URL.revokeObjectURL(url);
 }
 
-// Init
+// ---- INIT ----
 document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).toUpperCase();
-renderToday();
+
+(async () => {
+  showStatus('loading…');
+  await seedHistoricalIfNeeded();
+  await fetchEntries();
+  renderToday();
+  showStatus('synced');
+})();
 </script>
 </body>
 </html>
