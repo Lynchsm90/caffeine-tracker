@@ -820,7 +820,7 @@ function dailyTotals() {
 function renderToday() {
   const today = todayStr();
   const todayEntries = entries.filter(e => e.date === today).reverse();
-  const total = Math.round(todayEntries.reduce((s,e) => s+e.mg, 0));
+  const total = todayEntries.reduce((s,e)=>s+e.mg,0).toFixed(1);
   const limit = settings.limit;
   const pct = Math.min(100, (total/limit)*100);
 
@@ -834,7 +834,7 @@ function renderToday() {
   const remaining = limit - total;
   const status = document.getElementById('meter-status');
   if (total === 0) status.textContent = 'no entries today';
-  else if (remaining > 0) status.textContent = Math.round(remaining) + ' mg remaining';
+  else if (remaining > 0) status.textContent = remaining.toFixed(1) + ' mg remaining';
   else status.textContent = 'over daily limit';
 
   const dt = dailyTotals();
@@ -844,8 +844,8 @@ function renderToday() {
     const ds = d.toISOString().slice(0,10);
     if (dt[ds] !== undefined) last7.push(dt[ds]);
   }
-  const avg = last7.length ? Math.round(last7.reduce((a,b)=>a+b,0)/last7.length) : 0;
-  const hi = last7.length ? Math.round(Math.max(...last7)) : 0;
+  const avg = last7.length ? (last7.reduce((a,b)=>a+b,0)/last7.length).toFixed(1) : 0;
+  const hi = last7.length ? (Math.max(...last7)).toFixed(1) : 0;
   document.getElementById('avg7').innerHTML = avg + '<span class="stat-cell-unit"> mg</span>';
   document.getElementById('weekHigh').innerHTML = hi + '<span class="stat-cell-unit"> mg</span>';
 
@@ -858,7 +858,7 @@ function renderToday() {
       const idx = entries.indexOf(e);
       const row = document.createElement('div');
       row.className = 'entry-item';
-      row.innerHTML = `<div class="entry-source">${e.source}<div class="entry-meta">${e.time||''}</div></div><span class="entry-mg">${Math.round(e.mg)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span><button class="del-btn" onclick="deleteEntry(${idx})">×</button>`;
+      row.innerHTML = `<div class="entry-source">${e.source}<div class="entry-meta">${e.time||''}</div></div><span class="entry-mg">${parseFloat(e.mg).toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span><button class="del-btn" onclick="deleteEntry(${idx})">×</button>`;
       list.appendChild(row);
     });
   }
@@ -886,7 +886,7 @@ function renderLog() {
       const idx = entries.indexOf(e);
       const row = document.createElement('div');
       row.className = 'entry-item';
-      row.innerHTML = `<div class="entry-source">${e.source}<div class="entry-meta">${fmtDate(e.date)}</div></div><span class="entry-mg">${Math.round(e.mg)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span><button class="del-btn" onclick="deleteEntry(${idx});renderLog();">×</button>`;
+      row.innerHTML = `<div class="entry-source">${e.source}<div class="entry-meta">${fmtDate(e.date)}</div></div><span class="entry-mg">${parseFloat(e.mg).toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span><button class="del-btn" onclick="deleteEntry(${idx});renderLog();">×</button>`;
       list.appendChild(row);
     });
   }
@@ -899,10 +899,10 @@ function renderTrends() {
   if (vals.length) {
     const sorted = [...vals].sort((a,b)=>a-b);
     const med = sorted.length%2===0 ? (sorted[sorted.length/2-1]+sorted[sorted.length/2])/2 : sorted[Math.floor(sorted.length/2)];
-    document.getElementById('t-avg').innerHTML = Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) + '<span class="stat-cell-unit"> mg</span>';
-    document.getElementById('t-high').innerHTML = Math.round(Math.max(...vals)) + '<span class="stat-cell-unit"> mg</span>';
-    document.getElementById('t-med').innerHTML = Math.round(med) + '<span class="stat-cell-unit"> mg</span>';
-    document.getElementById('t-low').innerHTML = Math.round(Math.min(...vals)) + '<span class="stat-cell-unit"> mg</span>';
+    document.getElementById('t-avg').innerHTML = (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) + '<span class="stat-cell-unit"> mg</span>';
+    document.getElementById('t-high').innerHTML = (Math.max(...vals)).toFixed(1) + '<span class="stat-cell-unit"> mg</span>';
+    document.getElementById('t-med').innerHTML = med.toFixed(1) + '<span class="stat-cell-unit"> mg</span>';
+    document.getElementById('t-low').innerHTML = (Math.min(...vals)).toFixed(1) + '<span class="stat-cell-unit"> mg</span>';
   }
 
   // Main chart — range aware
@@ -913,12 +913,12 @@ function renderTrends() {
   if (currentRange === 'all') {
     allSortedDates.forEach(ds => {
       labels.push(fmtDate(ds));
-      data.push(Math.round(dt[ds]||0));
+      data.push(parseFloat(dt[ds]||0).toFixed(1));
     });
   } else if (currentRange === 'custom' && customFrom && customTo) {
     allSortedDates.filter(ds => ds >= customFrom && ds <= customTo).forEach(ds => {
       labels.push(fmtDate(ds));
-      data.push(Math.round(dt[ds]||0));
+      data.push(parseFloat(dt[ds]||0).toFixed(1));
     });
   } else {
     const days = currentRange === '7' ? 7 : 14;
@@ -926,7 +926,7 @@ function renderTrends() {
       const d = new Date(today); d.setDate(d.getDate()-i);
       const ds = d.toISOString().slice(0,10);
       labels.push(i===0 ? 'today' : fmtDow(ds));
-      data.push(Math.round(dt[ds]||0));
+      data.push(parseFloat(dt[ds]||0).toFixed(1));
     }
   }
 
@@ -983,7 +983,7 @@ function renderTrends() {
     const dow = new Date(ds+'T12:00:00').getDay();
     dowSums[dow]+=total; dowCounts[dow]++;
   });
-  const dowAvgs = dowSums.map((s,i) => dowCounts[i] ? Math.round(s/dowCounts[i]) : 0);
+  const dowAvgs = dowSums.map((s,i) => dowCounts[i] ? parseFloat((s/dowCounts[i]).toFixed(1)) : 0);
   const orderedAvgs = [dowAvgs[1],dowAvgs[2],dowAvgs[3],dowAvgs[4],dowAvgs[5],dowAvgs[6],dowAvgs[0]];
   const orderedLabels = ['M','T','W','T','F','S','S'];
   const maxDow = Math.max(...orderedAvgs, 1);
@@ -1004,7 +1004,7 @@ function renderTrends() {
   allDates.forEach(ds => {
     const row = document.createElement('div');
     row.className = 'history-item';
-    row.innerHTML = `<span class="history-date">${fmtDate(ds)} <span style="color:var(--dim)">${fmtDow(ds)}</span></span><span class="history-val">${Math.round(dt[ds])} <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">mg</span></span>`;
+    row.innerHTML = `<span class="history-date">${fmtDate(ds)} <span style="color:var(--dim)">${fmtDow(ds)}</span></span><span class="history-val">${parseFloat(dt[ds]).toFixed(1)} <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">mg</span></span>`;
     hl.appendChild(row);
   });
 }
