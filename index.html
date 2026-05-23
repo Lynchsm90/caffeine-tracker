@@ -116,8 +116,9 @@ html, body {
   transition: color 0.15s;
 }
 
-.tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+.tab svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.5; }
 .tab.active { color: var(--accent); }
+.tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px 6px; cursor: pointer; border: none; background: none; color: var(--dim); font-family: var(--mono); font-size: 9px; letter-spacing: 0.03em; text-transform: uppercase; transition: color 0.15s; }
 
 /* METER */
 .meter-card {
@@ -615,6 +616,23 @@ html, body {
 
       <div class="section-label">Today</div>
       <div id="today-list"></div>
+
+      <!-- TEACRINE TODAY -->
+      <div class="meter-card" style="margin-top:12px;border-color:rgba(96,200,240,0.25);">
+        <div class="meter-top">
+          <div>
+            <span class="meter-total" id="tc-meter-total" style="color:var(--accent2);">0</span>
+            <span class="meter-unit">mg</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);letter-spacing:0.04em;text-transform:uppercase;">Teacrine</div>
+        </div>
+        <div class="meter-track">
+          <div class="meter-fill" id="tc-meter-fill" style="width:0%;background:var(--accent2);"></div>
+        </div>
+        <div class="meter-status" id="tc-meter-status">no teacrine today</div>
+      </div>
+      <div class="section-label" style="margin-top:12px;" id="tc-today-label" style="display:none;">Teacrine today</div>
+      <div id="tc-today-list"></div>
     </div>
 
     <!-- LOG -->
@@ -741,6 +759,7 @@ html, body {
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
           <div class="chart-title" style="margin-bottom:0;">Daily totals</div>
           <div style="display:flex;gap:6px;align-items:center;">
+            <button class="range-btn" id="tc-overlay-btn" onclick="toggleTcOverlay()" title="Teacrine overlay" style="color:var(--accent2);border-color:rgba(96,200,240,0.3);">TC</button>
             <button class="range-btn" id="type-bar" onclick="setChartType('bar')" title="Bar chart">▐▌</button>
             <button class="range-btn active" id="type-line" onclick="setChartType('line')" title="Line chart">╱</button>
           </div>
@@ -785,6 +804,36 @@ html, body {
       <div id="history-list"></div>
     </div>
 
+    <!-- TEACRINE -->
+    <div class="screen" id="screen-teacrine">
+      <div class="section-label" style="margin-top:8px;">Quick add</div>
+      <div class="preset-grid" id="tc-preset-grid" style="margin-bottom:16px;"></div>
+
+      <div class="custom-card">
+        <div class="section-label" style="margin-top:0;">Custom entry</div>
+        <div class="field-row" style="margin-bottom:8px;">
+          <input type="number" id="tc-custom-mg" class="mg-field" placeholder="mg" min="0.1" max="1000" step="0.1"
+            style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <div style="flex:1;">
+            <div class="section-label" style="margin-top:0;">Time</div>
+            <input type="time" id="tc-log-time"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
+          </div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <div class="section-label" style="margin-top:0;">Note <span style="color:var(--dim);font-size:9px;">(optional)</span></div>
+          <input type="text" id="tc-log-note" placeholder="e.g. felt good, took with food…" autocomplete="off"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;" />
+        </div>
+        <button class="add-btn" style="background:var(--accent2);color:#0a0a0a;" onclick="addTeacrineCustom()">Add entry</button>
+      </div>
+
+      <div class="section-label" style="margin-top:16px;">Recent</div>
+      <div id="tc-recent-list"></div>
+    </div>
+
     <!-- SETTINGS -->
     <div class="screen" id="screen-settings">
       <div class="section-label" style="margin-top:8px;">Limits</div>
@@ -824,6 +873,10 @@ html, body {
     <button class="tab" id="tab-trends" onclick="switchTab('trends')">
       <svg viewBox="0 0 24 24"><path d="M3 18l5-6 4 3 5-7 4 4"/></svg>
       Trends
+    </button>
+    <button class="tab" id="tab-teacrine" onclick="switchTab('teacrine')">
+      <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/></svg>
+      Teacrine
     </button>
     <button class="tab" id="tab-settings" onclick="switchTab('settings')">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -893,8 +946,16 @@ const HISTORICAL = [
 let currentRange = 'all';
 let customFrom = null, customTo = null;
 let currentChartType = 'line';
-let activeAvgs = new Set(['7']); // default rolling avg shown
+let activeAvgs = new Set(['7']);
+let showTcOverlay = false;
 let mainChart = null;
+
+function toggleTcOverlay() {
+  showTcOverlay = !showTcOverlay;
+  const btn = document.getElementById('tc-overlay-btn');
+  btn.classList.toggle('active', showTcOverlay);
+  renderTrends();
+}
 
 function setChartType(type) {
   currentChartType = type;
@@ -1419,6 +1480,26 @@ function renderTrends() {
     });
   });
 
+  // Teacrine overlay
+  if (showTcOverlay) {
+    const tcDt = tcDailyTotals();
+    const tcData = viewDates.map(ds => tcDt[ds] != null ? parseFloat(tcDt[ds].toFixed(1)) : null);
+    datasets.push({
+      label: 'Teacrine',
+      data: tcData,
+      borderColor: '#60c8f0',
+      backgroundColor: 'rgba(96,200,240,0.08)',
+      borderWidth: 2,
+      pointRadius: data.length > 30 ? 0 : 2,
+      pointBackgroundColor: '#60c8f0',
+      fill: false,
+      tension: 0.3,
+      type: 'line',
+      order: 2,
+      spanGaps: false,
+    });
+  }
+
   const ctx = document.getElementById('main-chart').getContext('2d');
   mainChart = new Chart(ctx, {
     type: isLine ? 'line' : 'bar',
@@ -1453,6 +1534,9 @@ function renderTrends() {
     const color = AVG_COLORS[w] || AVG_COLORS.custom;
     legend.innerHTML += `<span style="font-size:10px;color:var(--dim);display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:16px;height:2px;background:${color};border-radius:1px;"></span>${w}d avg</span>`;
   });
+  if (showTcOverlay) {
+    legend.innerHTML += `<span style="font-size:10px;color:var(--dim);display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:16px;height:2px;background:#60c8f0;border-radius:1px;"></span>Teacrine</span>`;
+  }
 
   // DOW chart
   const dowSums=[0,0,0,0,0,0,0], dowCounts=[0,0,0,0,0,0,0];
@@ -1501,13 +1585,14 @@ function renderSettings() {
 
 // ---- ACTIONS ----
 function switchTab(tab) {
-  ['today','log','trends','settings'].forEach(t => {
+  ['today','log','trends','teacrine','settings'].forEach(t => {
     document.getElementById('screen-'+t).classList.toggle('active', t===tab);
     document.getElementById('tab-'+t).classList.toggle('active', t===tab);
   });
-  if (tab==='today') renderToday();
+  if (tab==='today') { renderToday(); renderTodayTeacrine(); }
   if (tab==='log') renderLog();
   if (tab==='trends') renderTrends();
+  if (tab==='teacrine') renderTeacrine();
   if (tab==='settings') renderSettings();
 }
 
@@ -1569,6 +1654,148 @@ function exportCSV() {
   URL.revokeObjectURL(url);
 }
 
+// ---- TEACRINE ----
+const TC_PRESETS = [
+  { name: '100mg pill', mg: 100 },
+  { name: '½ pill', mg: 50 },
+  { name: '¼ pill', mg: 25 },
+];
+
+let tcEntries = [];
+
+async function fetchTeacrineEntries() {
+  const { data, error } = await sb.from('teacrine').select('*').order('created_at', { ascending: true });
+  if (error) { showStatus('teacrine sync error', true); return; }
+  tcEntries = data.map(r => ({ id: r.id, date: r.date, mg: parseFloat(r.mg), time: r.time || '—', note: r.note || '' }));
+}
+
+async function insertTeacrine(entry) {
+  const { data, error } = await sb.from('teacrine').insert([{
+    date: entry.date, mg: entry.mg, time: entry.time, note: entry.note || null
+  }]).select().single();
+  if (error) { showStatus('save failed', true); return null; }
+  return data;
+}
+
+async function removeTeacrine(id) {
+  const { error } = await sb.from('teacrine').delete().eq('id', id);
+  if (error) { showStatus('delete failed', true); }
+}
+
+async function addTeacrineEntry(mg, timeVal, note) {
+  const now = new Date();
+  const defaultTime = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  const time = timeVal || defaultTime;
+  const entry = { date: todayStr(), mg: parseFloat(mg), time, note: note || '' };
+  showStatus('saving…');
+  const saved = await insertTeacrine(entry);
+  if (saved) {
+    tcEntries.push({ id: saved.id, date: saved.date, mg: parseFloat(saved.mg), time: saved.time, note: saved.note || '' });
+    showStatus('saved');
+    renderTodayTeacrine();
+    renderTeacrine();
+  }
+}
+
+async function deleteTeacrineEntry(id) {
+  await removeTeacrine(id);
+  tcEntries = tcEntries.filter(e => e.id !== id);
+  renderTodayTeacrine();
+  renderTeacrine();
+}
+
+function tcDailyTotals() {
+  const map = {};
+  tcEntries.forEach(e => { map[e.date] = (map[e.date]||0) + e.mg; });
+  return map;
+}
+
+function renderTodayTeacrine() {
+  const today = todayStr();
+  const todayTc = tcEntries.filter(e => e.date === today).reverse();
+  const total = todayTc.reduce((s,e) => s+e.mg, 0);
+
+  document.getElementById('tc-meter-total').textContent = total.toFixed(1);
+  const pct = Math.min(100, (total / 200) * 100); // 200mg soft max for bar
+  const fill = document.getElementById('tc-meter-fill');
+  fill.style.width = pct + '%';
+  document.getElementById('tc-meter-status').textContent = total === 0 ? 'no teacrine today' : `${total.toFixed(1)} mg logged`;
+
+  const list = document.getElementById('tc-today-list');
+  list.innerHTML = '';
+  const label = document.getElementById('tc-today-label');
+  if (!todayTc.length) {
+    label.style.display = 'none';
+    return;
+  }
+  label.style.display = 'block';
+  todayTc.forEach(e => {
+    const row = document.createElement('div');
+    row.className = 'entry-item';
+    const noteHtml = e.note ? `<div class="entry-meta" style="color:var(--accent2);opacity:0.8;">${e.note}</div>` : '';
+    row.innerHTML = `
+      <div class="entry-source" style="flex:1;">
+        Teacrine
+        <div class="entry-meta">${e.time||'—'}</div>
+        ${noteHtml}
+      </div>
+      <span class="entry-mg" style="color:var(--accent2);">${e.mg.toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span>
+      <button class="del-btn" onclick="deleteTeacrineEntry('${e.id}')">×</button>`;
+    list.appendChild(row);
+  });
+}
+
+function renderTeacrine() {
+  // Preset grid
+  const pg = document.getElementById('tc-preset-grid');
+  pg.innerHTML = '';
+  TC_PRESETS.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn';
+    btn.style.borderColor = 'rgba(96,200,240,0.2)';
+    btn.innerHTML = `<div class="preset-name">${p.name}</div><span class="preset-mg" style="color:var(--accent2);">${p.mg}</span><span class="preset-mg-unit"> mg</span>`;
+    btn.onclick = () => {
+      setDefaultTime('tc-log-time');
+      addTeacrineEntry(p.mg, document.getElementById('tc-log-time').value ? fmtTimeInput(document.getElementById('tc-log-time').value) : null, document.getElementById('tc-log-note').value.trim());
+      document.getElementById('tc-log-note').value = '';
+    };
+    pg.appendChild(btn);
+  });
+
+  // Recent list
+  const recent = [...tcEntries].reverse().slice(0, 12);
+  const list = document.getElementById('tc-recent-list');
+  list.innerHTML = '';
+  if (!recent.length) {
+    list.innerHTML = '<div class="empty-state">no entries yet</div>';
+    return;
+  }
+  recent.forEach(e => {
+    const row = document.createElement('div');
+    row.className = 'entry-item';
+    const noteHtml = e.note ? `<div class="entry-meta" style="color:var(--accent2);opacity:0.8;">${e.note}</div>` : '';
+    row.innerHTML = `
+      <div class="entry-source" style="flex:1;">
+        Teacrine
+        <div class="entry-meta">${fmtDate(e.date)}</div>
+        ${noteHtml}
+      </div>
+      <span class="entry-mg" style="color:var(--accent2);">${e.mg.toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span>
+      <button class="del-btn" onclick="deleteTeacrineEntry('${e.id}')">×</button>`;
+    list.appendChild(row);
+  });
+}
+
+async function addTeacrineCustom() {
+  const mg = parseFloat(document.getElementById('tc-custom-mg').value);
+  if (isNaN(mg) || mg <= 0) { alert('Enter a valid mg amount.'); return; }
+  const timeVal = document.getElementById('tc-log-time').value ? fmtTimeInput(document.getElementById('tc-log-time').value) : null;
+  const note = document.getElementById('tc-log-note').value.trim();
+  await addTeacrineEntry(mg, timeVal, note);
+  document.getElementById('tc-custom-mg').value = '';
+  document.getElementById('tc-log-note').value = '';
+}
+
 // ---- INIT ----
 document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).toUpperCase();
 
@@ -1576,7 +1803,9 @@ document.getElementById('today-date').textContent = new Date().toLocaleDateStrin
   showStatus('loading…');
   await seedHistoricalIfNeeded();
   await fetchEntries();
+  await fetchTeacrineEntries();
   renderToday();
+  renderTodayTeacrine();
   showStatus('synced');
 })();
 </script>
