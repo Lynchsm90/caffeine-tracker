@@ -1419,7 +1419,7 @@ function renderTrends() {
   const accentColor = '#c8f060';
 
   // Compute rolling averages for each active window
-  const AVG_COLORS = { 3: '#60c8f0', 5: '#f0a060', 7: '#c060f0', custom: '#f06060' };
+  const AVG_COLORS = { 3: '#f0e060', 5: '#f0a060', 7: '#c060f0', custom: '#f06060' };
   const allDatesForAvg = Object.keys(dt).sort();
 
   function rollingAvg(dates, totals, window) {
@@ -1483,7 +1483,7 @@ function renderTrends() {
   // Teacrine overlay
   if (showTcOverlay) {
     const tcDt = tcDailyTotals();
-    const tcData = viewDates.map(ds => tcDt[ds] != null ? parseFloat(tcDt[ds].toFixed(1)) : null);
+    const tcData = viewDates.map(ds => tcDt[ds] !== undefined ? parseFloat(tcDt[ds].toFixed(1)) : null);
     datasets.push({
       label: 'Teacrine',
       data: tcData,
