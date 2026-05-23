@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Caffeine">
@@ -1247,6 +1248,13 @@ async function addNewSource() {
   document.getElementById('new-log-note').value = '';
   document.getElementById('new-mg-preview').textContent = '';
   renderSourceList();
+}
+
+function fmtTimeInput(val) {
+  const [h, m] = val.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2,'0')} ${ampm}`;
 }
 
 // Set default time to now when source is selected
