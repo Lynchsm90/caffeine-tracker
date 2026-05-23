@@ -777,6 +777,7 @@ html, body {
           <div class="chart-title" style="margin-bottom:0;">Daily totals</div>
           <div style="display:flex;gap:6px;align-items:center;">
             <button class="range-btn" id="tc-overlay-btn" onclick="toggleTcOverlay()" title="Teacrine overlay" style="color:var(--accent2);border-color:rgba(96,200,240,0.3);">TC</button>
+            <button class="range-btn" id="thc-overlay-btn" onclick="toggleThcOverlay()" title="THC overlay" style="color:#60f0a0;border-color:rgba(96,240,160,0.3);">THC</button>
             <button class="range-btn" id="type-bar" onclick="setChartType('bar')" title="Bar chart">▐▌</button>
             <button class="range-btn active" id="type-line" onclick="setChartType('line')" title="Line chart">╱</button>
           </div>
@@ -847,7 +848,14 @@ html, body {
         <button class="add-btn" style="background:var(--accent2);color:#0a0a0a;" onclick="addTeacrineCustom()">Add entry</button>
       </div>
 
-      <div class="section-label" style="margin-top:16px;">Recent</div>
+      <div class="section-label" style="margin-top:16px;">History</div>
+      <div class="chart-wrap" style="margin-bottom:12px;">
+        <div class="chart-title">Daily mg</div>
+        <div style="position:relative;width:100%;height:120px;">
+          <canvas id="tc-chart"></canvas>
+        </div>
+      </div>
+      <div class="section-label">Recent</div>
       <div id="tc-recent-list"></div>
     </div>
 
@@ -994,11 +1002,16 @@ html, body {
         </div>
       </div>
 
-      <div class="section-label" style="margin-top:16px;">Recent</div>
+      <div class="section-label" style="margin-top:16px;">History</div>
+      <div class="chart-wrap" style="margin-bottom:12px;">
+        <div class="chart-title">Edibles (mg) · Vape (puffs) · Flower (g)</div>
+        <div style="position:relative;width:100%;height:120px;">
+          <canvas id="thc-chart"></canvas>
+        </div>
+      </div>
+      <div class="section-label">Recent</div>
       <div id="thc-recent-list"></div>
     </div>
-
-    <!-- SETTINGS -->
     <div class="screen" id="screen-settings">
       <div class="section-label" style="margin-top:8px;">Limits</div>
       <div class="settings-card">
@@ -1116,12 +1129,18 @@ let customFrom = null, customTo = null;
 let currentChartType = 'line';
 let activeAvgs = new Set(['7']);
 let showTcOverlay = false;
+let showThcOverlay = false;
 let mainChart = null;
 
 function toggleTcOverlay() {
   showTcOverlay = !showTcOverlay;
-  const btn = document.getElementById('tc-overlay-btn');
-  btn.classList.toggle('active', showTcOverlay);
+  document.getElementById('tc-overlay-btn').classList.toggle('active', showTcOverlay);
+  renderTrends();
+}
+
+function toggleThcOverlay() {
+  showThcOverlay = !showThcOverlay;
+  document.getElementById('thc-overlay-btn').classList.toggle('active', showThcOverlay);
   renderTrends();
 }
 
@@ -1668,6 +1687,29 @@ function renderTrends() {
     });
   }
 
+  // THC overlay (edibles mg only on this chart)
+  if (showThcOverlay) {
+    const thcDt = {};
+    thcEntries.filter(e => e.type === 'edible').forEach(e => {
+      thcDt[e.date] = (thcDt[e.date]||0) + e.quantity;
+    });
+    const thcData = viewDates.map(ds => thcDt[ds] !== undefined ? parseFloat(thcDt[ds].toFixed(1)) : null);
+    datasets.push({
+      label: 'THC (mg)',
+      data: thcData,
+      borderColor: '#60f0a0',
+      backgroundColor: 'rgba(96,240,160,0.08)',
+      borderWidth: 2,
+      pointRadius: data.length > 30 ? 0 : 2,
+      pointBackgroundColor: '#60f0a0',
+      fill: false,
+      tension: 0.3,
+      type: 'line',
+      order: 3,
+      spanGaps: false,
+    });
+  }
+
   const ctx = document.getElementById('main-chart').getContext('2d');
   mainChart = new Chart(ctx, {
     type: isLine ? 'line' : 'bar',
@@ -1704,6 +1746,9 @@ function renderTrends() {
   });
   if (showTcOverlay) {
     legend.innerHTML += `<span style="font-size:10px;color:var(--dim);display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:16px;height:2px;background:#60c8f0;border-radius:1px;"></span>Teacrine</span>`;
+  }
+  if (showThcOverlay) {
+    legend.innerHTML += `<span style="font-size:10px;color:var(--dim);display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:16px;height:2px;background:#60f0a0;border-radius:1px;"></span>THC edible</span>`;
   }
 
   // DOW chart
@@ -1914,6 +1959,8 @@ function renderTodayTeacrine() {
   });
 }
 
+let tcChart = null;
+
 function renderTeacrine() {
   // Preset grid
   const pg = document.getElementById('tc-preset-grid');
@@ -1931,14 +1978,30 @@ function renderTeacrine() {
     pg.appendChild(btn);
   });
 
-  // Recent list
-  const recent = [...tcEntries].reverse().slice(0, 12);
+  // Teacrine chart
+  const tcDt = tcDailyTotals();
+  const allTcDates = Object.keys(tcDt).sort();
+  const tcLabels = allTcDates.map(fmtDate);
+  const tcData = allTcDates.map(ds => parseFloat(tcDt[ds].toFixed(1)));
+  if (tcChart) tcChart.destroy();
+  if (allTcDates.length) {
+    tcChart = new Chart(document.getElementById('tc-chart').getContext('2d'), {
+      type: 'line',
+      data: { labels: tcLabels, datasets: [{ data: tcData, borderColor: '#60c8f0', backgroundColor: 'rgba(96,200,240,0.08)', borderWidth: 2, pointRadius: tcData.length > 20 ? 0 : 2, fill: true, tension: 0.3 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#555', font: { size: 9, family: 'DM Mono' }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false }, border: { display: false } },
+          y: { ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } }
+        }
+      }
+    });
+  }
+
+  // Recent list sorted by date desc then created
+  const recent = [...tcEntries].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 12);
   const list = document.getElementById('tc-recent-list');
   list.innerHTML = '';
-  if (!recent.length) {
-    list.innerHTML = '<div class="empty-state">no entries yet</div>';
-    return;
-  }
+  if (!recent.length) { list.innerHTML = '<div class="empty-state">no entries yet</div>'; return; }
   recent.forEach(e => {
     const row = document.createElement('div');
     row.className = 'entry-item';
@@ -2160,18 +2223,52 @@ function renderTodayThc() {
   });
 }
 
+let thcChart = null;
+
 function renderThc() {
   updateVapeCartDisplay();
   updateThcPreview();
   setDefaultTime('thc-edible-time');
-  // Set today as default date for all panels
   const td = todayStr();
   ['thc-edible-date','thc-vape-date','thc-flower-date'].forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.value) el.value = td;
   });
 
-  const recent = [...thcEntries].reverse().slice(0,15);
+  // THC chart — edibles mg, vape puffs, flower grams as stacked bars by day
+  const allThcDates = [...new Set(thcEntries.map(e=>e.date))].sort();
+  const edibleByDay = {}, vapeByDay = {}, flowerByDay = {};
+  thcEntries.forEach(e => {
+    if (e.type==='edible') edibleByDay[e.date] = (edibleByDay[e.date]||0)+e.quantity;
+    if (e.type==='vape') vapeByDay[e.date] = (vapeByDay[e.date]||0)+e.quantity;
+    if (e.type==='flower') flowerByDay[e.date] = (flowerByDay[e.date]||0)+e.quantity;
+  });
+  if (thcChart) thcChart.destroy();
+  if (allThcDates.length) {
+    const thcLabels = allThcDates.map(fmtDate);
+    thcChart = new Chart(document.getElementById('thc-chart').getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: thcLabels,
+        datasets: [
+          { label: 'Edible (mg)', data: allThcDates.map(d=>edibleByDay[d]||0), backgroundColor: 'rgba(96,240,160,0.7)', borderRadius: 3 },
+          { label: 'Vape (puffs)', data: allThcDates.map(d=>vapeByDay[d]||0), backgroundColor: 'rgba(96,200,240,0.6)', borderRadius: 3 },
+          { label: 'Flower (g×10)', data: allThcDates.map(d=>(flowerByDay[d]||0)*10), backgroundColor: 'rgba(240,200,96,0.6)', borderRadius: 3 },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, labels: { color: '#555', font: { size: 9, family: 'DM Mono' }, boxWidth: 10, padding: 8 } } },
+        scales: {
+          x: { stacked: true, ticks: { color: '#555', font: { size: 9, family: 'DM Mono' }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false }, border: { display: false } },
+          y: { stacked: true, ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } }
+        }
+      }
+    });
+  }
+
+  // Recent sorted by date desc
+  const recent = [...thcEntries].sort((a,b) => b.date.localeCompare(a.date) || (b.time||'').localeCompare(a.time||'')).slice(0,15);
   const list = document.getElementById('thc-recent-list');
   list.innerHTML = '';
   if (!recent.length) { list.innerHTML = '<div class="empty-state">no entries yet</div>'; return; }
