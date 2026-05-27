@@ -1112,6 +1112,46 @@ html, body {
       <button class="add-btn" onclick="saveEdit()">Save changes</button>
     </div>
   </div>
+
+  <!-- TEACRINE EDIT MODAL -->
+  <div id="tc-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;align-items:flex-end;justify-content:center;">
+    <div style="background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:430px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:14px;color:var(--text);font-weight:500;" id="tc-edit-modal-title"></div>
+        <button onclick="closeTcEditModal()" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:22px;line-height:1;">×</button>
+      </div>
+      <div class="section-label" style="margin-top:0;">Amount (mg)</div>
+      <input type="number" id="tc-edit-mg" min="0.1" step="0.1"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:15px;color:var(--accent2);outline:none;margin-bottom:16px;" />
+      <div class="section-label" style="margin-top:0;">Time</div>
+      <input type="time" id="tc-edit-time"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:15px;color:var(--text);outline:none;margin-bottom:16px;" />
+      <div class="section-label" style="margin-top:0;">Note <span style="color:var(--dim);font-size:9px;">(optional)</span></div>
+      <input type="text" id="tc-edit-note" placeholder="add a note…" autocomplete="off"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;margin-bottom:20px;" />
+      <button class="add-btn" style="background:var(--accent2);" onclick="saveTcEdit()">Save changes</button>
+    </div>
+  </div>
+
+  <!-- THC EDIT MODAL -->
+  <div id="thc-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;align-items:flex-end;justify-content:center;">
+    <div style="background:var(--surface);border-radius:20px 20px 0 0;padding:24px 20px 40px;width:100%;max-width:430px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:14px;color:var(--text);font-weight:500;" id="thc-edit-modal-title"></div>
+        <button onclick="closeThcEditModal()" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:22px;line-height:1;">×</button>
+      </div>
+      <div class="section-label" style="margin-top:0;">Amount (<span id="thc-edit-unit">mg</span>)</div>
+      <input type="number" id="thc-edit-qty" min="0.1" step="0.1"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:15px;color:#60f0a0;outline:none;margin-bottom:16px;" />
+      <div class="section-label" style="margin-top:0;">Time</div>
+      <input type="time" id="thc-edit-time"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:15px;color:var(--text);outline:none;margin-bottom:16px;" />
+      <div class="section-label" style="margin-top:0;">Note <span style="color:var(--dim);font-size:9px;">(optional)</span></div>
+      <input type="text" id="thc-edit-note" placeholder="add a note…" autocomplete="off"
+        style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;margin-bottom:20px;" />
+      <button class="add-btn" style="background:#60f0a0;" onclick="saveThcEdit()">Save changes</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -1805,14 +1845,43 @@ function renderTrends() {
     dc.appendChild(col);
   });
 
-  // History list
-  const allDates = Object.keys(dt).sort().reverse().slice(0,30);
+  // History list — all dates, expandable entries per day
+  const allDates = Object.keys(dt).sort().reverse();
   const hl = document.getElementById('history-list');
   hl.innerHTML = '';
   allDates.forEach(ds => {
+    const dayEntries = entries.filter(e => e.date === ds).reverse();
     const row = document.createElement('div');
     row.className = 'history-item';
-    row.innerHTML = `<span class="history-date">${fmtDate(ds)} <span style="color:var(--dim)">${fmtDow(ds)}</span></span><span class="history-val">${parseFloat(dt[ds]).toFixed(1)} <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">mg</span></span>`;
+    row.style.cssText = 'flex-direction:column;align-items:stretch;padding:10px 0;gap:0;';
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;cursor:pointer;';
+    header.innerHTML = `<span class="history-date">${fmtDate(ds)} <span style="color:var(--dim)">${fmtDow(ds)}</span></span><div style="display:flex;align-items:center;gap:10px;"><span class="history-val">${parseFloat(dt[ds]).toFixed(1)} <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">mg</span></span><span style="font-size:14px;color:var(--dim);line-height:1;transition:transform 0.2s;" class="hist-chevron">›</span></div>`;
+    const detail = document.createElement('div');
+    detail.style.cssText = 'display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);';
+    dayEntries.forEach(e => {
+      const noteHtml = e.note ? `<div style="font-size:11px;color:var(--accent);opacity:0.7;margin-top:1px;">${e.note}</div>` : '';
+      const eRow = document.createElement('div');
+      eRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);';
+      eRow.innerHTML = `
+        <div style="flex:1;cursor:pointer;" onclick="openEditModal('${e.id}')">
+          <div style="font-size:13px;color:var(--text);">${e.source}</div>
+          <div style="font-size:11px;color:var(--muted);">${e.time||'—'}</div>
+          ${noteHtml}
+        </div>
+        <span style="font-family:var(--serif);font-size:18px;font-weight:300;color:var(--accent);white-space:nowrap;cursor:pointer;" onclick="openEditModal('${e.id}')">${parseFloat(e.mg).toFixed(1)}<span style="font-size:11px;color:var(--muted);font-family:var(--mono);"> mg</span></span>
+        <button class="del-btn" onclick="deleteEntry('${e.id}');this.closest('.history-item').remove();">×</button>`;
+      eRow.lastElementChild.previousElementSibling.previousElementSibling && null;
+      detail.appendChild(eRow);
+    });
+    if (detail.lastChild) detail.lastChild.style.borderBottom = 'none';
+    header.onclick = () => {
+      const open = detail.style.display !== 'none';
+      detail.style.display = open ? 'none' : 'block';
+      header.querySelector('.hist-chevron').style.transform = open ? '' : 'rotate(90deg)';
+    };
+    row.appendChild(header);
+    row.appendChild(detail);
     hl.appendChild(row);
   });
 }
@@ -2140,8 +2209,8 @@ function renderTeacrine() {
     });
   }
 
-  // Recent list sorted by date desc then created
-  const recent = [...tcEntries].sort((a,b) => b.date.localeCompare(a.date)).slice(0, 12);
+  // All entries sorted by date desc — no cap
+  const recent = [...tcEntries].sort((a,b) => b.date.localeCompare(a.date) || (b.time||'').localeCompare(a.time||''));
   const list = document.getElementById('tc-recent-list');
   list.innerHTML = '';
   if (!recent.length) { list.innerHTML = '<div class="empty-state">no entries yet</div>'; return; }
@@ -2150,12 +2219,12 @@ function renderTeacrine() {
     row.className = 'entry-item';
     const noteHtml = e.note ? `<div class="entry-meta" style="color:var(--accent2);opacity:0.8;">${e.note}</div>` : '';
     row.innerHTML = `
-      <div class="entry-source" style="flex:1;">
+      <div class="entry-source" style="flex:1;cursor:pointer;" onclick="openTcEditModal('${e.id}')">
         Teacrine
-        <div class="entry-meta">${fmtDate(e.date)}</div>
+        <div class="entry-meta">${fmtDate(e.date)} · ${e.time||'—'}</div>
         ${noteHtml}
       </div>
-      <span class="entry-mg" style="color:var(--accent2);">${e.mg.toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span>
+      <span class="entry-mg" style="color:var(--accent2);cursor:pointer;" onclick="openTcEditModal('${e.id}')">${e.mg.toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span>
       <button class="del-btn" onclick="deleteTeacrineEntry('${e.id}')">×</button>`;
     list.appendChild(row);
   });
@@ -2410,8 +2479,8 @@ function renderThc() {
     });
   }
 
-  // Recent sorted by date desc
-  const recent = [...thcEntries].sort((a,b) => b.date.localeCompare(a.date) || (b.time||'').localeCompare(a.time||'')).slice(0,15);
+  // All entries sorted — no cap
+  const recent = [...thcEntries].sort((a,b) => b.date.localeCompare(a.date) || (b.time||'').localeCompare(a.time||''));
   const list = document.getElementById('thc-recent-list');
   list.innerHTML = '';
   if (!recent.length) { list.innerHTML = '<div class="empty-state">no entries yet</div>'; return; }
@@ -2421,16 +2490,120 @@ function renderThc() {
     const typeIcon = e.type==='edible'?'🍬':e.type==='vape'?'💨':'🌿';
     const noteHtml = e.note ? `<div class="entry-meta" style="color:#60f0a0;opacity:0.8;">${e.note}</div>` : '';
     row.innerHTML = `
-      <div class="entry-source" style="flex:1;">
+      <div class="entry-source" style="flex:1;cursor:pointer;" onclick="openThcEditModal('${e.id}')">
         ${typeIcon} ${e.label||e.type}
         <div class="entry-meta">${fmtDate(e.date)} · ${e.time||'—'}</div>
         ${noteHtml}
       </div>
-      <span class="entry-mg" style="color:#60f0a0;">${e.quantity}${e.unit==='mg'?'':' '}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);">${e.unit}</span></span>
+      <span class="entry-mg" style="color:#60f0a0;cursor:pointer;" onclick="openThcEditModal('${e.id}')">${e.quantity}${e.unit==='mg'?'':' '}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);">${e.unit}</span></span>
       <button class="del-btn" onclick="deleteThcEntry('${e.id}')">×</button>`;
     list.appendChild(row);
   });
 }
+
+// ---- TEACRINE EDIT MODAL ----
+let editingTcId = null;
+
+function openTcEditModal(id) {
+  const e = tcEntries.find(x => x.id === id);
+  if (!e) return;
+  editingTcId = id;
+  document.getElementById('tc-edit-modal-title').textContent = 'Teacrine — ' + fmtDate(e.date);
+  document.getElementById('tc-edit-mg').value = e.mg;
+  const timeMatch = (e.time || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (timeMatch) {
+    let h = parseInt(timeMatch[1]);
+    const min = timeMatch[2];
+    const ampm = timeMatch[3].toUpperCase();
+    if (ampm === 'PM' && h !== 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    document.getElementById('tc-edit-time').value = `${String(h).padStart(2,'0')}:${min}`;
+  } else {
+    setDefaultTime('tc-edit-time');
+  }
+  document.getElementById('tc-edit-note').value = e.note || '';
+  const modal = document.getElementById('tc-edit-modal');
+  modal.style.display = 'flex';
+}
+
+function closeTcEditModal() {
+  document.getElementById('tc-edit-modal').style.display = 'none';
+  editingTcId = null;
+}
+
+async function saveTcEdit() {
+  if (!editingTcId) return;
+  const mg = parseFloat(document.getElementById('tc-edit-mg').value);
+  if (isNaN(mg) || mg <= 0) { alert('Enter a valid mg amount.'); return; }
+  const timeVal = document.getElementById('tc-edit-time').value
+    ? fmtTimeInput(document.getElementById('tc-edit-time').value) : '—';
+  const note = document.getElementById('tc-edit-note').value.trim();
+  const { error } = await sb.from('teacrine').update({ mg, time: timeVal, note }).eq('id', editingTcId);
+  if (error) { showStatus('save failed', true); return; }
+  const e = tcEntries.find(x => x.id === editingTcId);
+  if (e) { e.mg = mg; e.time = timeVal; e.note = note; }
+  showStatus('saved');
+  closeTcEditModal();
+  renderTodayTeacrine();
+  renderTeacrine();
+}
+
+document.getElementById('tc-edit-modal').addEventListener('click', function(ev) {
+  if (ev.target === this) closeTcEditModal();
+});
+
+// ---- THC EDIT MODAL ----
+let editingThcId = null;
+
+function openThcEditModal(id) {
+  const e = thcEntries.find(x => x.id === id);
+  if (!e) return;
+  editingThcId = id;
+  const typeIcon = e.type==='edible'?'🍬':e.type==='vape'?'💨':'🌿';
+  document.getElementById('thc-edit-modal-title').textContent = `${typeIcon} ${e.label||e.type} — ${fmtDate(e.date)}`;
+  document.getElementById('thc-edit-qty').value = e.quantity;
+  document.getElementById('thc-edit-unit').textContent = e.unit;
+  const timeMatch = (e.time || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (timeMatch) {
+    let h = parseInt(timeMatch[1]);
+    const min = timeMatch[2];
+    const ampm = timeMatch[3].toUpperCase();
+    if (ampm === 'PM' && h !== 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+    document.getElementById('thc-edit-time').value = `${String(h).padStart(2,'0')}:${min}`;
+  } else {
+    setDefaultTime('thc-edit-time');
+  }
+  document.getElementById('thc-edit-note').value = e.note || '';
+  document.getElementById('thc-edit-modal').style.display = 'flex';
+}
+
+function closeThcEditModal() {
+  document.getElementById('thc-edit-modal').style.display = 'none';
+  editingThcId = null;
+}
+
+async function saveThcEdit() {
+  if (!editingThcId) return;
+  const e = thcEntries.find(x => x.id === editingThcId);
+  if (!e) return;
+  const quantity = parseFloat(document.getElementById('thc-edit-qty').value);
+  if (isNaN(quantity) || quantity <= 0) { alert('Enter a valid amount.'); return; }
+  const timeVal = document.getElementById('thc-edit-time').value
+    ? fmtTimeInput(document.getElementById('thc-edit-time').value) : '—';
+  const note = document.getElementById('thc-edit-note').value.trim();
+  const { error } = await sb.from('thc_entries').update({ quantity, time: timeVal, note }).eq('id', editingThcId);
+  if (error) { showStatus('save failed', true); return; }
+  e.quantity = quantity; e.time = timeVal; e.note = note;
+  showStatus('saved');
+  closeThcEditModal();
+  renderTodayThc();
+  renderThc();
+}
+
+document.getElementById('thc-edit-modal').addEventListener('click', function(ev) {
+  if (ev.target === this) closeThcEditModal();
+});
 
 // ---- INIT ----
 document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).toUpperCase();
