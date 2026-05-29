@@ -169,22 +169,6 @@ html, body {
 /* In edit mode, disable card expand so dragging is unambiguous */
 #tile-container.editing .meter-card.expandable { cursor: grab; pointer-events: none; }
 
-/* QUICK ADD CHIPS */
-.quick-chip {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 8px 12px;
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--text);
-  cursor: pointer;
-  letter-spacing: 0.02em;
-  transition: border-color 0.15s, background 0.15s;
-}
-.quick-chip:active { background: var(--surface); border-color: var(--accent); }
-.quick-chip .chip-mg { color: var(--accent); font-size: 11px; margin-left: 4px; }
-
 /* METER */
 .meter-card {
   background: var(--surface);
@@ -348,6 +332,12 @@ html, body {
   gap: 8px;
   margin-bottom: 16px;
 }
+.quick-recent-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.quick-recent-grid .empty-state { grid-column: 1 / -1; }
 
 .preset-btn {
   background: var(--surface);
@@ -665,12 +655,6 @@ html, body {
         </div>
       </div>
 
-      <!-- QUICK ADD -->
-      <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;">
-        <span>Quick add</span>
-      </div>
-      <div id="quick-add-row" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;"></div>
-
       <!-- REORDERABLE SUBSTANCE TILES -->
       <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;">
         <span>Substances</span>
@@ -754,10 +738,16 @@ html, body {
       </div>
     </div>
 
-    <!-- LOG -->
+    <!-- LOG (CAFFEINE) -->
     <div class="screen" id="screen-log">
+      <!-- QUICK ADD -->
+      <div class="section-label" style="margin-top:10px;">Quick add</div>
+      <div class="quick-recent-grid" id="caf-quick-grid" style="margin-bottom:16px;"></div>
+
+      <!-- LOG ENTRY -->
+      <div class="section-label">Log entry</div>
       <!-- TAGS -->
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 10px;">
+      <div id="caf-tag-row" style="display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px;">
         <button class="tag-btn active" onclick="setTag('all')">All</button>
         <button class="tag-btn" onclick="setTag('pill')">💊 Pill</button>
         <button class="tag-btn" onclick="setTag('coffee')">☕ Coffee</button>
@@ -851,6 +841,20 @@ html, body {
           <button class="add-btn" onclick="addNewSource()">Add &amp; log entry</button>
         </div>
       </div>
+
+      <!-- HISTORY -->
+      <div class="section-label" style="margin-top:16px;">History</div>
+      <div class="chart-wrap" style="margin-bottom:12px;">
+        <div class="chart-title">Daily mg</div>
+        <div style="position:relative;width:100%;height:120px;">
+          <canvas id="caf-log-chart"></canvas>
+        </div>
+      </div>
+      <div class="section-label" id="caf-recent-toggle" onclick="toggleRecent('caffeine')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <span>Recent</span>
+        <span class="card-chevron" id="caf-recent-chevron">›</span>
+      </div>
+      <div id="caf-recent-list" style="display:none;"></div>
     </div>
 
     <!-- TRENDS -->
@@ -983,11 +987,11 @@ html, body {
 
     <!-- TEACRINE -->
     <div class="screen" id="screen-teacrine">
-      <div class="section-label" style="margin-top:8px;">Quick add</div>
-      <div class="preset-grid" id="tc-preset-grid" style="margin-bottom:16px;"></div>
+      <div class="section-label" style="margin-top:10px;">Quick add</div>
+      <div class="quick-recent-grid" id="tc-quick-grid" style="margin-bottom:16px;"></div>
 
+      <div class="section-label">Log entry</div>
       <div class="custom-card">
-        <div class="section-label" style="margin-top:0;">Custom entry</div>
         <div class="field-row" style="margin-bottom:8px;">
           <input type="number" id="tc-custom-mg" class="mg-field" placeholder="mg" min="0.1" max="1000" step="0.1"
             style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
@@ -1014,14 +1018,21 @@ html, body {
           <canvas id="tc-chart"></canvas>
         </div>
       </div>
-      <div class="section-label">Recent</div>
-      <div id="tc-recent-list"></div>
+      <div class="section-label" id="tc-recent-toggle" onclick="toggleRecent('teacrine')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <span>Recent</span>
+        <span class="card-chevron" id="tc-recent-chevron">›</span>
+      </div>
+      <div id="tc-recent-list" style="display:none;"></div>
     </div>
 
     <!-- THC -->
     <div class="screen" id="screen-thc">
+      <div class="section-label" style="margin-top:10px;">Quick add</div>
+      <div class="quick-recent-grid" id="thc-quick-grid" style="margin-bottom:16px;"></div>
+
+      <div class="section-label">Log entry</div>
       <!-- TYPE SELECTOR -->
-      <div style="display:flex;gap:8px;margin:10px 0 14px;">
+      <div style="display:flex;gap:8px;margin:0 0 14px;">
         <button class="tag-btn active" id="thc-type-edible" onclick="setThcType('edible')">🍬 Edible</button>
         <button class="tag-btn" id="thc-type-vape" onclick="setThcType('vape')">💨 Vape</button>
         <button class="tag-btn" id="thc-type-flower" onclick="setThcType('flower')">🌿 Flower</button>
@@ -1168,8 +1179,11 @@ html, body {
           <canvas id="thc-chart"></canvas>
         </div>
       </div>
-      <div class="section-label">Recent</div>
-      <div id="thc-recent-list"></div>
+      <div class="section-label" id="thc-recent-toggle" onclick="toggleRecent('thc')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <span>Recent</span>
+        <span class="card-chevron" id="thc-recent-chevron">›</span>
+      </div>
+      <div id="thc-recent-list" style="display:none;"></div>
     </div>
     <div class="screen" id="screen-settings">
       <div class="section-label" style="margin-top:8px;">Limits</div>
@@ -1202,13 +1216,13 @@ html, body {
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
       Today
     </button>
-    <button class="tab" id="tab-log" onclick="switchTab('log')">
-      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      Log
-    </button>
     <button class="tab" id="tab-trends" onclick="switchTab('trends')">
       <svg viewBox="0 0 24 24"><path d="M3 18l5-6 4 3 5-7 4 4"/></svg>
       Trends
+    </button>
+    <button class="tab" id="tab-log" onclick="switchTab('log')">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      Caffeine
     </button>
     <button class="tab" id="tab-teacrine" onclick="switchTab('teacrine')">
       <svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/></svg>
@@ -1576,17 +1590,63 @@ function setTag(tag) {
   activeTag = tag;
   document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('active'));
   // only first row of tag buttons (not the new-source-tags)
-  const mainTags = document.querySelectorAll('#screen-log > div:first-child .tag-btn');
   const tags = ['all','pill','coffee','energy','food','other'];
-  // target by index in the tag row
-  document.querySelectorAll('#screen-log > div:first-child .tag-btn')[tags.indexOf(tag)]?.classList.add('active');
+  document.querySelectorAll('#caf-tag-row .tag-btn')[tags.indexOf(tag)]?.classList.add('active');
   renderSourceList();
 }
 
 function renderLog() {
   activeTag = 'all';
-  document.querySelectorAll('#screen-log > div:first-child .tag-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+  document.querySelectorAll('#caf-tag-row .tag-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+  renderCafQuickGrid();
+  renderCafHistory();
   renderSourceList();
+}
+
+// ---- CAFFEINE HISTORY (mirrors TC/THC structure) ----
+let cafLogChart = null;
+
+function renderCafHistory() {
+  // Daily mg chart
+  const dt = dailyTotals();
+  const dates = Object.keys(dt).sort();
+  const labels = dates.map(fmtDate);
+  const data = dates.map(ds => parseFloat(dt[ds].toFixed(1)));
+  if (cafLogChart) cafLogChart.destroy();
+  const canvas = document.getElementById('caf-log-chart');
+  if (canvas && dates.length) {
+    cafLogChart = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: { labels, datasets: [{ data, borderColor: '#c8f060', backgroundColor: 'rgba(200,240,96,0.08)', borderWidth: 2, pointRadius: data.length > 20 ? 0 : 2, fill: true, tension: 0.3 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#555', font: { size: 9, family: 'DM Mono' }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false }, border: { display: false } },
+          y: { ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } }
+        }
+      }
+    });
+  }
+
+  // Recent list — all entries, newest first
+  const list = document.getElementById('caf-recent-list');
+  if (!list) return;
+  const recent = [...entries].sort((a,b) => b.date.localeCompare(a.date) || (b.time||'').localeCompare(a.time||''));
+  list.innerHTML = '';
+  if (!recent.length) { list.innerHTML = '<div class="empty-state">no entries yet</div>'; return; }
+  recent.forEach(e => {
+    const row = document.createElement('div');
+    row.className = 'entry-item';
+    const noteHtml = e.note ? `<div class="entry-meta" style="color:var(--accent);opacity:0.8;">${e.note}</div>` : '';
+    row.innerHTML = `
+      <div class="entry-source" style="flex:1;cursor:pointer;" onclick="openEditModal('${e.id}')">
+        ${e.source}
+        <div class="entry-meta">${fmtDate(e.date)} · ${e.time||'—'}</div>
+        ${noteHtml}
+      </div>
+      <span class="entry-mg" style="cursor:pointer;" onclick="openEditModal('${e.id}')">${parseFloat(e.mg).toFixed(1)}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span>
+      <button class="del-btn" onclick="deleteEntry('${e.id}')">×</button>`;
+    list.appendChild(row);
+  });
 }
 
 function renderSourceList() {
@@ -2302,21 +2362,7 @@ function renderTodayTeacrine() {
 let tcChart = null;
 
 function renderTeacrine() {
-  // Preset grid
-  const pg = document.getElementById('tc-preset-grid');
-  pg.innerHTML = '';
-  TC_PRESETS.forEach(p => {
-    const btn = document.createElement('button');
-    btn.className = 'preset-btn';
-    btn.style.borderColor = 'rgba(96,200,240,0.2)';
-    btn.innerHTML = `<div class="preset-name">${p.name}</div><span class="preset-mg" style="color:var(--accent2);">${p.mg}</span><span class="preset-mg-unit"> mg</span>`;
-    btn.onclick = () => {
-      setDefaultTime('tc-log-time');
-      addTeacrineEntry(p.mg, document.getElementById('tc-log-time').value ? fmtTimeInput(document.getElementById('tc-log-time').value) : null, document.getElementById('tc-log-note').value.trim());
-      document.getElementById('tc-log-note').value = '';
-    };
-    pg.appendChild(btn);
-  });
+  renderTcQuickGrid();
 
   // Teacrine chart
   const tcDt = tcDailyTotals();
@@ -2568,6 +2614,7 @@ let thcChart = null;
 function renderThc() {
   updateVapeCartDisplay();
   updateThcPreview();
+  renderThcQuickGrid();
   setDefaultTime('thc-edible-time');
   const td = todayStr();
   ['thc-edible-date','thc-vape-date','thc-flower-date'].forEach(id => {
@@ -2763,32 +2810,6 @@ function restoreCardExpands() {
   });
 }
 
-// ---- QUICK ADD PRESETS ----
-function renderQuickAdd() {
-  const row = document.getElementById('quick-add-row');
-  if (!row) return;
-  row.innerHTML = '';
-  const presets = (settings.presets || []).slice(0, 8);
-  presets.forEach(p => {
-    const btn = document.createElement('button');
-    btn.className = 'quick-chip';
-    btn.innerHTML = `${p.name}<span class="chip-mg">${p.mg}mg</span>`;
-    btn.onclick = () => quickAdd(p.name, p.mg);
-    row.appendChild(btn);
-  });
-}
-async function quickAdd(name, mg) {
-  const time = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-  const entry = { date: todayStr(), source: name, mg: parseFloat(mg), time, note: '' };
-  showStatus('saving…');
-  const saved = await insertEntry(entry);
-  if (saved) {
-    entries.push({ id: saved.id, date: saved.date, source: saved.source, mg: parseFloat(saved.mg), time: saved.time, note: saved.note || '' });
-    showStatus(`+${mg}mg ${name}`);
-    renderToday();
-  }
-}
-
 // ---- HISTORY SECTION COLLAPSE (persisted) ----
 const HISTORY_COLLAPSE_KEY = 'caffeine_history_collapsed';
 function setHistorySection(collapsed) {
@@ -2807,6 +2828,136 @@ function restoreHistoryCollapse() {
   let collapsed = true; // default collapsed
   try { const v = JSON.parse(localStorage.getItem(HISTORY_COLLAPSE_KEY)); if (v === false) collapsed = false; } catch {}
   setHistorySection(collapsed);
+}
+
+// ---- RECENT LIST COLLAPSE (persisted, per substance) ----
+const RECENT_CONFIG = {
+  caffeine: { list: 'caf-recent-list', chevron: 'caf-recent-chevron' },
+  teacrine: { list: 'tc-recent-list', chevron: 'tc-recent-chevron' },
+  thc: { list: 'thc-recent-list', chevron: 'thc-recent-chevron' },
+};
+function recentKey(name) { return 'caffeine_recent_open_' + name; }
+function setRecent(name, open) {
+  const cfg = RECENT_CONFIG[name];
+  const list = document.getElementById(cfg.list);
+  const chev = document.getElementById(cfg.chevron);
+  if (!list) return;
+  list.style.display = open ? 'block' : 'none';
+  if (chev) chev.classList.toggle('open', open);
+}
+function toggleRecent(name) {
+  const cfg = RECENT_CONFIG[name];
+  const open = document.getElementById(cfg.list).style.display !== 'none';
+  setRecent(name, !open);
+  localStorage.setItem(recentKey(name), JSON.stringify(!open));
+}
+function restoreRecentCollapse() {
+  Object.keys(RECENT_CONFIG).forEach(name => {
+    let open = false; // default collapsed
+    try { const v = JSON.parse(localStorage.getItem(recentKey(name))); if (v === true) open = true; } catch {}
+    setRecent(name, open);
+  });
+}
+
+// ---- QUICK ADD = 4 most-recently-used distinct items (taps prefill the form) ----
+function renderQuickGrids() {
+  renderCafQuickGrid();
+  renderTcQuickGrid();
+  renderThcQuickGrid();
+}
+
+function renderCafQuickGrid() {
+  const grid = document.getElementById('caf-quick-grid');
+  if (!grid) return;
+  // distinct by base source name, newest first
+  const sorted = [...entries].sort((a,b) => b.date.localeCompare(a.date) || (b.time||'').localeCompare(a.time||''));
+  const seen = new Map();
+  for (const e of sorted) {
+    const base = e.source.replace(/^[\d.]+×\s*/, '');
+    if (!seen.has(base)) seen.set(base, e.mg);
+    if (seen.size >= 4) break;
+  }
+  grid.innerHTML = '';
+  if (!seen.size) { grid.innerHTML = '<div class="empty-state">log something to see quick adds</div>'; return; }
+  seen.forEach((mg, name) => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn';
+    btn.innerHTML = `<div class="preset-name">${name}</div><span class="preset-mg" style="color:var(--accent);">${mg}</span><span class="preset-mg-unit"> mg</span>`;
+    btn.onclick = () => prefillCaffeine(name, mg);
+    grid.appendChild(btn);
+  });
+}
+function prefillCaffeine(name, mg) {
+  selectSource({ name, baseMg: mg, tag: getTagForSource(name) });
+}
+
+function renderTcQuickGrid() {
+  const grid = document.getElementById('tc-quick-grid');
+  if (!grid) return;
+  const sorted = [...tcEntries].sort((a,b) => b.date.localeCompare(a.date) || (b.time||'').localeCompare(a.time||''));
+  const seen = new Set();
+  const items = [];
+  for (const e of sorted) {
+    const key = e.mg;
+    if (!seen.has(key)) { seen.add(key); items.push(e.mg); }
+    if (items.length >= 4) break;
+  }
+  grid.innerHTML = '';
+  if (!items.length) { grid.innerHTML = '<div class="empty-state">log something to see quick adds</div>'; return; }
+  items.forEach(mg => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn';
+    btn.style.borderColor = 'rgba(96,200,240,0.2)';
+    btn.innerHTML = `<div class="preset-name">Teacrine</div><span class="preset-mg" style="color:var(--accent2);">${mg}</span><span class="preset-mg-unit"> mg</span>`;
+    btn.onclick = () => prefillTeacrine(mg);
+    grid.appendChild(btn);
+  });
+}
+function prefillTeacrine(mg) {
+  const input = document.getElementById('tc-custom-mg');
+  input.value = mg;
+  setDefaultTime('tc-log-time');
+  input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  input.focus();
+}
+
+function renderThcQuickGrid() {
+  const grid = document.getElementById('thc-quick-grid');
+  if (!grid) return;
+  const sorted = [...thcEntries].sort((a,b) => b.date.localeCompare(a.date) || (b.time||'').localeCompare(a.time||''));
+  const seen = new Set();
+  const items = [];
+  for (const e of sorted) {
+    const key = e.type + '|' + (e.label||'') + '|' + e.quantity;
+    if (!seen.has(key)) { seen.add(key); items.push(e); }
+    if (items.length >= 4) break;
+  }
+  grid.innerHTML = '';
+  if (!items.length) { grid.innerHTML = '<div class="empty-state">log something to see quick adds</div>'; return; }
+  items.forEach(e => {
+    const icon = e.type==='edible'?'🍬':e.type==='vape'?'💨':'🌿';
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn';
+    btn.style.borderColor = 'rgba(96,240,160,0.2)';
+    btn.innerHTML = `<div class="preset-name">${icon} ${e.label||e.type}</div><span class="preset-mg" style="color:#60f0a0;">${e.quantity}</span><span class="preset-mg-unit"> ${e.unit}</span>`;
+    btn.onclick = () => prefillThc(e);
+    grid.appendChild(btn);
+  });
+}
+function prefillThc(e) {
+  setThcType(e.type);
+  if (e.type === 'edible') {
+    document.getElementById('thc-mg-input').value = e.quantity;
+    updateThcPreview();
+    if (e.label) document.getElementById('thc-edible-note').value = '';
+  } else if (e.type === 'vape') {
+    document.getElementById('thc-puffs').value = e.quantity;
+  } else if (e.type === 'flower') {
+    document.getElementById('thc-grams').value = e.quantity;
+    if (e.label && e.label !== 'Flower') document.getElementById('thc-flower-strain').value = e.label;
+  }
+  const panel = document.getElementById('thc-panel-' + e.type);
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // ---- GENERIC REORDERABLE TILE SYSTEM ----
@@ -2913,9 +3064,9 @@ document.getElementById('today-date').textContent = new Date().toLocaleDateStrin
   await fetchThcEntries();
   applyOrder('substance'); initReorder('substance');
   applyOrder('trend'); initReorder('trend');
-  renderQuickAdd();
   restoreCardExpands();
   restoreHistoryCollapse();
+  restoreRecentCollapse();
   renderToday();
   renderTodayTeacrine();
   renderTodayThc();
