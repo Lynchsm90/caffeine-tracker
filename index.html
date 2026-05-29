@@ -744,6 +744,15 @@ html, body {
       <div class="section-label" style="margin-top:10px;">Quick add</div>
       <div class="quick-recent-grid" id="caf-quick-grid" style="margin-bottom:16px;"></div>
 
+      <!-- HISTORY -->
+      <div class="section-label">History</div>
+      <div class="chart-wrap" style="margin-bottom:16px;">
+        <div class="chart-title">Daily mg</div>
+        <div style="position:relative;width:100%;height:120px;">
+          <canvas id="caf-log-chart"></canvas>
+        </div>
+      </div>
+
       <!-- LOG ENTRY -->
       <div class="section-label">Log entry</div>
       <!-- TAGS -->
@@ -761,8 +770,12 @@ html, body {
         style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:11px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;margin-bottom:8px;"
         oninput="renderSourceList()" />
 
-      <!-- SOURCE LIST -->
-      <div id="source-list" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;"></div>
+      <!-- SOURCE LIST (collapsible) -->
+      <div class="section-label" id="caf-sources-toggle" onclick="toggleSources()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-top:0;">
+        <span>Sources</span>
+        <span class="card-chevron" id="caf-sources-chevron">›</span>
+      </div>
+      <div id="source-list" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;"></div>
 
       <!-- QUANTITY CARD -->
       <div class="custom-card" id="quantity-card" style="display:none;">
@@ -842,15 +855,7 @@ html, body {
         </div>
       </div>
 
-      <!-- HISTORY -->
-      <div class="section-label" style="margin-top:16px;">History</div>
-      <div class="chart-wrap" style="margin-bottom:12px;">
-        <div class="chart-title">Daily mg</div>
-        <div style="position:relative;width:100%;height:120px;">
-          <canvas id="caf-log-chart"></canvas>
-        </div>
-      </div>
-      <div class="section-label" id="caf-recent-toggle" onclick="toggleRecent('caffeine')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+      <div class="section-label" id="caf-recent-toggle" onclick="toggleRecent('caffeine')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-top:16px;">
         <span>Recent</span>
         <span class="card-chevron" id="caf-recent-chevron">›</span>
       </div>
@@ -990,6 +995,14 @@ html, body {
       <div class="section-label" style="margin-top:10px;">Quick add</div>
       <div class="quick-recent-grid" id="tc-quick-grid" style="margin-bottom:16px;"></div>
 
+      <div class="section-label">History</div>
+      <div class="chart-wrap" style="margin-bottom:16px;">
+        <div class="chart-title">Daily mg</div>
+        <div style="position:relative;width:100%;height:120px;">
+          <canvas id="tc-chart"></canvas>
+        </div>
+      </div>
+
       <div class="section-label">Log entry</div>
       <div class="custom-card">
         <div class="field-row" style="margin-bottom:8px;">
@@ -1011,14 +1024,7 @@ html, body {
         <button class="add-btn" style="background:var(--accent2);color:#0a0a0a;" onclick="addTeacrineCustom()">Add entry</button>
       </div>
 
-      <div class="section-label" style="margin-top:16px;">History</div>
-      <div class="chart-wrap" style="margin-bottom:12px;">
-        <div class="chart-title">Daily mg</div>
-        <div style="position:relative;width:100%;height:120px;">
-          <canvas id="tc-chart"></canvas>
-        </div>
-      </div>
-      <div class="section-label" id="tc-recent-toggle" onclick="toggleRecent('teacrine')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+      <div class="section-label" id="tc-recent-toggle" onclick="toggleRecent('teacrine')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-top:16px;">
         <span>Recent</span>
         <span class="card-chevron" id="tc-recent-chevron">›</span>
       </div>
@@ -1029,6 +1035,14 @@ html, body {
     <div class="screen" id="screen-thc">
       <div class="section-label" style="margin-top:10px;">Quick add</div>
       <div class="quick-recent-grid" id="thc-quick-grid" style="margin-bottom:16px;"></div>
+
+      <div class="section-label">History</div>
+      <div class="chart-wrap" style="margin-bottom:16px;">
+        <div class="chart-title">Edibles (mg) · Vape (puffs) · Flower (g)</div>
+        <div style="position:relative;width:100%;height:120px;">
+          <canvas id="thc-chart"></canvas>
+        </div>
+      </div>
 
       <div class="section-label">Log entry</div>
       <!-- TYPE SELECTOR -->
@@ -1172,14 +1186,7 @@ html, body {
         </div>
       </div>
 
-      <div class="section-label" style="margin-top:16px;">History</div>
-      <div class="chart-wrap" style="margin-bottom:12px;">
-        <div class="chart-title">Edibles (mg) · Vape (puffs) · Flower (g)</div>
-        <div style="position:relative;width:100%;height:120px;">
-          <canvas id="thc-chart"></canvas>
-        </div>
-      </div>
-      <div class="section-label" id="thc-recent-toggle" onclick="toggleRecent('thc')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+      <div class="section-label" id="thc-recent-toggle" onclick="toggleRecent('thc')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-top:16px;">
         <span>Recent</span>
         <span class="card-chevron" id="thc-recent-chevron">›</span>
       </div>
@@ -1601,6 +1608,7 @@ function renderLog() {
   renderCafQuickGrid();
   renderCafHistory();
   renderSourceList();
+  restoreSourcesCollapse();
 }
 
 // ---- CAFFEINE HISTORY (mirrors TC/THC structure) ----
@@ -1660,6 +1668,9 @@ function renderSourceList() {
 
   const list = document.getElementById('source-list');
   list.innerHTML = '';
+
+  // If the user is actively searching or filtering, reveal the list automatically.
+  if (q || activeTag !== 'all') setSources(true);
 
   if (!filtered.length) {
     list.innerHTML = '<div style="padding:16px;text-align:center;color:var(--dim);font-size:13px;">no sources found</div>';
@@ -2859,6 +2870,26 @@ function restoreRecentCollapse() {
   });
 }
 
+// ---- CAFFEINE SOURCE LIST COLLAPSE (persisted) ----
+const SOURCES_KEY = 'caffeine_sources_open';
+function setSources(open) {
+  const list = document.getElementById('source-list');
+  const chev = document.getElementById('caf-sources-chevron');
+  if (!list) return;
+  list.style.display = open ? 'block' : 'none';
+  if (chev) chev.classList.toggle('open', open);
+}
+function toggleSources() {
+  const open = document.getElementById('source-list').style.display !== 'none';
+  setSources(!open);
+  localStorage.setItem(SOURCES_KEY, JSON.stringify(!open));
+}
+function restoreSourcesCollapse() {
+  let open = false; // default collapsed
+  try { const v = JSON.parse(localStorage.getItem(SOURCES_KEY)); if (v === true) open = true; } catch {}
+  setSources(open);
+}
+
 // ---- QUICK ADD = 4 most-recently-used distinct items (taps prefill the form) ----
 function renderQuickGrids() {
   renderCafQuickGrid();
@@ -3067,6 +3098,7 @@ document.getElementById('today-date').textContent = new Date().toLocaleDateStrin
   restoreCardExpands();
   restoreHistoryCollapse();
   restoreRecentCollapse();
+  restoreSourcesCollapse();
   renderToday();
   renderTodayTeacrine();
   renderTodayThc();
