@@ -498,7 +498,7 @@ html, body {
   display: flex;
   gap: 6px;
   align-items: flex-end;
-  height: 60px;
+  height: 88px;
 }
 
 .dow-col {
@@ -509,6 +509,14 @@ html, body {
   height: 100%;
   justify-content: flex-end;
   gap: 3px;
+}
+
+.dow-val {
+  font-size: 9px;
+  color: var(--muted);
+  font-family: var(--mono);
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .dow-bar {
@@ -957,7 +965,14 @@ html, body {
         <div class="trend-tile" data-trend="dow">
           <div class="tile-handle">⠿</div>
           <div class="chart-wrap" style="margin-top:0;">
-            <div class="chart-title">Avg by day of week</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div class="chart-title" style="margin-bottom:0;">Avg by day of week <span id="dow-unit" style="color:var(--dim);font-weight:400;">(mg)</span></div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <button class="range-btn active" id="dow-sub-caffeine" onclick="setDowSubstance('caffeine')" style="border-color:rgba(200,240,96,0.3);color:var(--accent);">Caff</button>
+                <button class="range-btn" id="dow-sub-teacrine" onclick="setDowSubstance('teacrine')" style="border-color:rgba(96,200,240,0.3);color:var(--accent2);">TC</button>
+                <button class="range-btn" id="dow-sub-thc" onclick="setDowSubstance('thc')" style="border-color:rgba(96,240,160,0.3);color:#60f0a0;">THC</button>
+              </div>
+            </div>
             <div class="dow-grid" id="dow-chart"></div>
           </div>
         </div>
@@ -1038,152 +1053,56 @@ html, body {
 
       <div class="section-label">History</div>
       <div class="chart-wrap" style="margin-bottom:16px;">
-        <div class="chart-title">Edibles (mg) · Vape (puffs) · Flower (g)</div>
+        <div class="chart-title">Daily mg</div>
         <div style="position:relative;width:100%;height:120px;">
           <canvas id="thc-chart"></canvas>
         </div>
       </div>
 
       <div class="section-label">Log entry</div>
-      <!-- TYPE SELECTOR -->
-      <div style="display:flex;gap:8px;margin:0 0 14px;">
-        <button class="tag-btn active" id="thc-type-edible" onclick="setThcType('edible')">🍬 Edible</button>
-        <button class="tag-btn" id="thc-type-vape" onclick="setThcType('vape')">💨 Vape</button>
-        <button class="tag-btn" id="thc-type-flower" onclick="setThcType('flower')">🌿 Flower</button>
+      <div class="section-label" style="margin-top:0;">Dose presets (mg)</div>
+      <div class="preset-grid" style="margin-bottom:16px;">
+        <button class="preset-btn" style="border-color:rgba(96,240,160,0.2);" onclick="logThcEdiblePreset(2.5)">
+          <div class="preset-name">Micro</div><span class="preset-mg" style="color:#60f0a0;">2.5</span><span class="preset-mg-unit"> mg</span>
+        </button>
+        <button class="preset-btn" style="border-color:rgba(96,240,160,0.2);" onclick="logThcEdiblePreset(5)">
+          <div class="preset-name">Low</div><span class="preset-mg" style="color:#60f0a0;">5</span><span class="preset-mg-unit"> mg</span>
+        </button>
+        <button class="preset-btn" style="border-color:rgba(96,240,160,0.2);" onclick="logThcEdiblePreset(10)">
+          <div class="preset-name">Standard</div><span class="preset-mg" style="color:#60f0a0;">10</span><span class="preset-mg-unit"> mg</span>
+        </button>
+        <button class="preset-btn" style="border-color:rgba(96,240,160,0.2);" onclick="logThcEdiblePreset(1)">
+          <div class="preset-name">Tiny</div><span class="preset-mg" style="color:#60f0a0;">1</span><span class="preset-mg-unit"> mg</span>
+        </button>
       </div>
-
-      <!-- EDIBLE PANEL -->
-      <div id="thc-panel-edible">
-        <div class="section-label" style="margin-top:0;">Dose presets (mg)</div>
-        <div class="preset-grid" style="margin-bottom:16px;">
-          <button class="preset-btn" style="border-color:rgba(96,240,160,0.2);" onclick="logThcEdiblePreset(2.5)">
-            <div class="preset-name">Micro</div><span class="preset-mg" style="color:#60f0a0;">2.5</span><span class="preset-mg-unit"> mg</span>
-          </button>
-          <button class="preset-btn" style="border-color:rgba(96,240,160,0.2);" onclick="logThcEdiblePreset(5)">
-            <div class="preset-name">Low</div><span class="preset-mg" style="color:#60f0a0;">5</span><span class="preset-mg-unit"> mg</span>
-          </button>
-          <button class="preset-btn" style="border-color:rgba(96,240,160,0.2);" onclick="logThcEdiblePreset(10)">
-            <div class="preset-name">Standard</div><span class="preset-mg" style="color:#60f0a0;">10</span><span class="preset-mg-unit"> mg</span>
-          </button>
-          <button class="preset-btn" style="border-color:rgba(96,240,160,0.2);" onclick="logThcEdiblePreset(1)">
-            <div class="preset-name">Tiny</div><span class="preset-mg" style="color:#60f0a0;">1</span><span class="preset-mg-unit"> mg</span>
-          </button>
+      <div class="custom-card">
+        <div class="section-label" style="margin-top:0;">Custom dose</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <button onclick="adjustThcMg(-1)" class="qty-btn">−1</button>
+          <button onclick="adjustThcMg(-0.5)" class="qty-btn">−½</button>
+          <input type="number" id="thc-mg-input" value="10" min="0.5" step="0.5"
+            style="flex:1;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:var(--serif);font-size:22px;color:#60f0a0;outline:none;"
+            oninput="updateThcPreview()" />
+          <button onclick="adjustThcMg(0.5)" class="qty-btn">+½</button>
+          <button onclick="adjustThcMg(1)" class="qty-btn">+1</button>
         </div>
-        <div class="custom-card">
-          <div class="section-label" style="margin-top:0;">Custom dose</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-            <button onclick="adjustThcMg(-1)" class="qty-btn">−1</button>
-            <button onclick="adjustThcMg(-0.5)" class="qty-btn">−½</button>
-            <input type="number" id="thc-mg-input" value="10" min="0.5" step="0.5"
-              style="flex:1;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:var(--serif);font-size:22px;color:#60f0a0;outline:none;"
-              oninput="updateThcPreview()" />
-            <button onclick="adjustThcMg(0.5)" class="qty-btn">+½</button>
-            <button onclick="adjustThcMg(1)" class="qty-btn">+1</button>
+        <div id="thc-mg-preview" style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:12px;"></div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <div style="flex:1;">
+            <div class="section-label" style="margin-top:0;">Date</div>
+            <input type="date" id="thc-edible-date" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
           </div>
-          <div id="thc-mg-preview" style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:12px;"></div>
-          <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <div style="flex:1;">
-              <div class="section-label" style="margin-top:0;">Date</div>
-              <input type="date" id="thc-edible-date" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
-            </div>
-            <div style="flex:1;">
-              <div class="section-label" style="margin-top:0;">Time</div>
-              <input type="time" id="thc-edible-time" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
-            </div>
+          <div style="flex:1;">
+            <div class="section-label" style="margin-top:0;">Time</div>
+            <input type="time" id="thc-edible-time" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
           </div>
-          <div style="margin-bottom:14px;">
-            <div class="section-label" style="margin-top:0;">Note <span style="color:var(--dim);font-size:9px;">(optional)</span></div>
-            <input type="text" id="thc-edible-note" placeholder="brand, strain, effects…" autocomplete="off"
-              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;" />
-          </div>
-          <button class="add-btn" style="background:#60f0a0;color:#0a0a0a;" onclick="logThcEdible()">Log edible</button>
         </div>
-      </div>
-
-      <!-- VAPE PANEL -->
-      <div id="thc-panel-vape" style="display:none;">
-        <div class="custom-card" style="margin-bottom:12px;">
-          <div class="section-label" style="margin-top:0;">Active vape cartridge</div>
-          <div id="thc-vape-active" style="font-size:13px;color:var(--muted);margin-bottom:10px;">No active cart — start one below</div>
-          <div style="display:flex;gap:8px;margin-bottom:12px;">
-            <div style="flex:1;">
-              <div class="section-label" style="margin-top:0;">Cart size</div>
-              <select id="thc-vape-size" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;">
-                <option value="0.5">0.5g</option>
-                <option value="1" selected>1g</option>
-              </select>
-            </div>
-            <div style="flex:1;">
-              <div class="section-label" style="margin-top:0;">Strain/name</div>
-              <input type="text" id="thc-vape-name" placeholder="e.g. Blue Dream" autocomplete="off"
-                style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;" />
-            </div>
-          </div>
-          <button class="add-btn" style="background:#60f0a0;color:#0a0a0a;margin-bottom:10px;" onclick="startVapeCart()">Start new cart</button>
+        <div style="margin-bottom:14px;">
+          <div class="section-label" style="margin-top:0;">Note <span style="color:var(--dim);font-size:9px;">(optional)</span></div>
+          <input type="text" id="thc-edible-note" placeholder="brand, strain, effects…" autocomplete="off"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;" />
         </div>
-        <div class="custom-card">
-          <div class="section-label" style="margin-top:0;">Log session</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-            <button onclick="adjustPuffs(-1)" class="qty-btn">−</button>
-            <input type="number" id="thc-puffs" value="3" min="1" step="1"
-              style="flex:1;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:var(--serif);font-size:22px;color:#60f0a0;outline:none;" />
-            <button onclick="adjustPuffs(1)" class="qty-btn">+</button>
-          </div>
-          <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px;">puffs</div>
-          <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <div style="flex:1;">
-              <div class="section-label" style="margin-top:0;">Date</div>
-              <input type="date" id="thc-vape-date" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
-            </div>
-            <div style="flex:1;">
-              <div class="section-label" style="margin-top:0;">Time</div>
-              <input type="time" id="thc-vape-time" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
-            </div>
-          </div>
-          <div style="margin-bottom:14px;">
-            <div class="section-label" style="margin-top:0;">Note</div>
-            <input type="text" id="thc-vape-note" placeholder="effects, mood…" autocomplete="off"
-              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;" />
-          </div>
-          <button class="add-btn" style="background:#60f0a0;color:#0a0a0a;" onclick="logVapeSession()">Log session</button>
-        </div>
-      </div>
-
-      <!-- FLOWER PANEL -->
-      <div id="thc-panel-flower" style="display:none;">
-        <div class="custom-card">
-          <div class="section-label" style="margin-top:0;">Amount smoked</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-            <button onclick="adjustGrams(-0.1)" class="qty-btn">−.1</button>
-            <button onclick="adjustGrams(-0.25)" class="qty-btn">−¼</button>
-            <input type="number" id="thc-grams" value="0.5" min="0.1" step="0.1"
-              style="flex:1;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;font-family:var(--serif);font-size:22px;color:#60f0a0;outline:none;" />
-            <button onclick="adjustGrams(0.25)" class="qty-btn">+¼</button>
-            <button onclick="adjustGrams(0.1)" class="qty-btn">+.1</button>
-          </div>
-          <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:12px;">grams</div>
-          <div style="margin-bottom:10px;">
-            <div class="section-label" style="margin-top:0;">Strain</div>
-            <input type="text" id="thc-flower-strain" placeholder="e.g. OG Kush" autocomplete="off"
-              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;" />
-          </div>
-          <div style="display:flex;gap:8px;margin-bottom:10px;">
-            <div style="flex:1;">
-              <div class="section-label" style="margin-top:0;">Date</div>
-              <input type="date" id="thc-flower-date" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
-            </div>
-            <div style="flex:1;">
-              <div class="section-label" style="margin-top:0;">Time</div>
-              <input type="time" id="thc-flower-time" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
-            </div>
-          </div>
-          <div style="margin-bottom:14px;">
-            <div class="section-label" style="margin-top:0;">Note</div>
-            <input type="text" id="thc-flower-note" placeholder="effects, mood…" autocomplete="off"
-              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;" />
-          </div>
-          <button class="add-btn" style="background:#60f0a0;color:#0a0a0a;" onclick="logFlowerSession()">Log session</button>
-        </div>
+        <button class="add-btn" style="background:#60f0a0;color:#0a0a0a;" onclick="logThcEdible()">Log edible</button>
       </div>
 
       <div class="section-label" id="thc-recent-toggle" onclick="toggleRecent('thc')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-top:16px;">
@@ -2024,25 +1943,8 @@ function renderTrends() {
   buildDualAxisChart();
   buildScatterChart(currentScatterX, currentScatterY);
 
-  // DOW chart
-  const dowSums=[0,0,0,0,0,0,0], dowCounts=[0,0,0,0,0,0,0];
-  Object.entries(dt).forEach(([ds,total]) => {
-    const dow = new Date(ds+'T12:00:00').getDay();
-    dowSums[dow]+=total; dowCounts[dow]++;
-  });
-  const dowAvgs = dowSums.map((s,i) => dowCounts[i] ? parseFloat((s/dowCounts[i]).toFixed(1)) : 0);
-  const orderedAvgs = [dowAvgs[1],dowAvgs[2],dowAvgs[3],dowAvgs[4],dowAvgs[5],dowAvgs[6],dowAvgs[0]];
-  const orderedLabels = ['M','T','W','T','F','S','S'];
-  const maxDow = Math.max(...orderedAvgs, 1);
-  const dc = document.getElementById('dow-chart');
-  dc.innerHTML = '';
-  orderedAvgs.forEach((v,i) => {
-    const col = document.createElement('div');
-    col.className = 'dow-col';
-    const h = Math.round((v/maxDow)*60);
-    col.innerHTML = `<div class="dow-bar" style="height:${h}px"></div><div class="dow-lbl">${orderedLabels[i]}</div>`;
-    dc.appendChild(col);
-  });
+  // DOW chart (substance-switchable)
+  renderDow();
 
   // History list — all dates, expandable entries per day
   const allDates = Object.keys(dt).sort().reverse();
@@ -2082,6 +1984,57 @@ function renderTrends() {
     row.appendChild(header);
     row.appendChild(detail);
     hl.appendChild(row);
+  });
+}
+
+// ---- DAY OF WEEK CHART (substance-switchable) ----
+let dowSubstance = 'caffeine';
+const DOW_META = {
+  caffeine: { unit: 'mg', color: 'var(--accent)', totals: () => dailyTotals() },
+  teacrine: { unit: 'mg', color: 'var(--accent2)', totals: () => tcDailyTotals() },
+  thc: { unit: 'mg', color: '#60f0a0', totals: () => thcEdibleDailyTotals() },
+};
+
+function thcEdibleDailyTotals() {
+  const map = {};
+  thcEntries.forEach(e => { map[e.date] = (map[e.date] || 0) + e.quantity; });
+  return map;
+}
+
+function setDowSubstance(sub) {
+  dowSubstance = sub;
+  ['caffeine','teacrine','thc'].forEach(s => {
+    document.getElementById('dow-sub-'+s)?.classList.toggle('active', s === sub);
+  });
+  renderDow();
+}
+
+function renderDow() {
+  const meta = DOW_META[dowSubstance];
+  const dt = meta.totals();
+  const dowSums=[0,0,0,0,0,0,0], dowCounts=[0,0,0,0,0,0,0];
+  Object.entries(dt).forEach(([ds,total]) => {
+    const dow = new Date(ds+'T12:00:00').getDay();
+    dowSums[dow]+=total; dowCounts[dow]++;
+  });
+  const dowAvgs = dowSums.map((s,i) => dowCounts[i] ? parseFloat((s/dowCounts[i]).toFixed(1)) : 0);
+  const orderedAvgs = [dowAvgs[1],dowAvgs[2],dowAvgs[3],dowAvgs[4],dowAvgs[5],dowAvgs[6],dowAvgs[0]];
+  const orderedLabels = ['M','T','W','T','F','S','S'];
+  const maxDow = Math.max(...orderedAvgs, 1);
+
+  const unitEl = document.getElementById('dow-unit');
+  if (unitEl) unitEl.textContent = `(${meta.unit})`;
+
+  const dc = document.getElementById('dow-chart');
+  if (!dc) return;
+  dc.innerHTML = '';
+  orderedAvgs.forEach((v,i) => {
+    const col = document.createElement('div');
+    col.className = 'dow-col';
+    const h = Math.round((v/maxDow)*54);
+    const valTxt = v ? (Number.isInteger(v) ? v : v.toFixed(1)) : '0';
+    col.innerHTML = `<div class="dow-val">${valTxt}</div><div class="dow-bar" style="height:${h}px;background:${meta.color};"></div><div class="dow-lbl">${orderedLabels[i]}</div>`;
+    dc.appendChild(col);
   });
 }
 
@@ -2425,10 +2378,8 @@ async function addTeacrineCustom() {
   document.getElementById('tc-log-note').value = '';
 }
 
-// ---- THC ----
+// ---- THC (edibles only, in mg) ----
 let thcEntries = [];
-let thcType = 'edible';
-let activeVapeCart = null; // { id, name, size, started }
 
 async function fetchThcEntries() {
   const { data, error } = await sb.from('thc').select('*').order('created_at', { ascending: true });
@@ -2437,8 +2388,6 @@ async function fetchThcEntries() {
     id: r.id, date: r.date, type: r.type, quantity: parseFloat(r.quantity),
     unit: r.unit, label: r.label || '', time: r.time || '—', note: r.note || ''
   }));
-  // find active vape cart from localStorage
-  try { activeVapeCart = JSON.parse(localStorage.getItem('thc_active_cart')) || null; } catch {}
 }
 
 async function insertThc(entry) {
@@ -2452,16 +2401,6 @@ async function removeThc(id) {
   if (error) { showStatus('delete failed', true); }
 }
 
-function setThcType(type) {
-  thcType = type;
-  ['edible','vape','flower'].forEach(t => {
-    document.getElementById(`thc-type-${t}`).classList.toggle('active', t===type);
-    document.getElementById(`thc-panel-${t}`).style.display = t===type ? 'block' : 'none';
-  });
-  if (type==='vape') { setDefaultTime('thc-vape-time'); updateVapeCartDisplay(); }
-  if (type==='flower') setDefaultTime('thc-flower-time');
-}
-
 function adjustThcMg(d) {
   const el = document.getElementById('thc-mg-input');
   el.value = Math.max(0.5, Math.round((parseFloat(el.value||10)+d)*10)/10);
@@ -2471,16 +2410,6 @@ function adjustThcMg(d) {
 function updateThcPreview() {
   const mg = parseFloat(document.getElementById('thc-mg-input').value)||0;
   document.getElementById('thc-mg-preview').textContent = `${mg} mg THC`;
-}
-
-function adjustPuffs(d) {
-  const el = document.getElementById('thc-puffs');
-  el.value = Math.max(1, parseInt(el.value||3)+d);
-}
-
-function adjustGrams(d) {
-  const el = document.getElementById('thc-grams');
-  el.value = Math.max(0.1, Math.round((parseFloat(el.value||0.5)+d)*100)/100);
 }
 
 async function logThcEdiblePreset(mg) {
@@ -2497,52 +2426,6 @@ async function logThcEdible() {
   const note = document.getElementById('thc-edible-note').value.trim();
   await saveThcEntry({ date, type: 'edible', quantity: mg, unit: 'mg', label: `${mg}mg edible`, time, note });
   document.getElementById('thc-edible-note').value = '';
-}
-
-function startVapeCart() {
-  const size = parseFloat(document.getElementById('thc-vape-size').value);
-  const name = document.getElementById('thc-vape-name').value.trim() || 'Cart';
-  activeVapeCart = { name, size, started: todayStr() };
-  localStorage.setItem('thc_active_cart', JSON.stringify(activeVapeCart));
-  updateVapeCartDisplay();
-  document.getElementById('thc-vape-name').value = '';
-}
-
-function updateVapeCartDisplay() {
-  const el = document.getElementById('thc-vape-active');
-  if (activeVapeCart) {
-    el.innerHTML = `<span style="color:var(--text);">${activeVapeCart.name}</span> <span style="color:var(--muted);">${activeVapeCart.size}g · started ${fmtDate(activeVapeCart.started)}</span>
-    <button onclick="finishVapeCart()" style="display:block;margin-top:6px;background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-family:var(--mono);font-size:11px;color:var(--muted);cursor:pointer;">Mark finished</button>`;
-  } else {
-    el.textContent = 'No active cart — start one below';
-  }
-}
-
-function finishVapeCart() {
-  activeVapeCart = null;
-  localStorage.removeItem('thc_active_cart');
-  updateVapeCartDisplay();
-}
-
-async function logVapeSession() {
-  const puffs = parseInt(document.getElementById('thc-puffs').value)||1;
-  const date = document.getElementById('thc-vape-date').value || todayStr();
-  const time = document.getElementById('thc-vape-time').value ? fmtTimeInput(document.getElementById('thc-vape-time').value) : null;
-  const note = document.getElementById('thc-vape-note').value.trim();
-  const label = activeVapeCart ? `${activeVapeCart.name} vape` : 'Vape';
-  await saveThcEntry({ date, type: 'vape', quantity: puffs, unit: 'puffs', label, time, note });
-  document.getElementById('thc-vape-note').value = '';
-}
-
-async function logFlowerSession() {
-  const grams = parseFloat(document.getElementById('thc-grams').value)||0.5;
-  const strain = document.getElementById('thc-flower-strain').value.trim();
-  const date = document.getElementById('thc-flower-date').value || todayStr();
-  const time = document.getElementById('thc-flower-time').value ? fmtTimeInput(document.getElementById('thc-flower-time').value) : null;
-  const note = document.getElementById('thc-flower-note').value.trim();
-  const label = strain || 'Flower';
-  await saveThcEntry({ date, type: 'flower', quantity: grams, unit: 'g', label, time, note });
-  document.getElementById('thc-flower-note').value = '';
 }
 
 async function saveThcEntry(entry) {
@@ -2573,15 +2456,7 @@ function renderTodayThc() {
   const list = document.getElementById('thc-today-list');
   list.innerHTML = '';
 
-  // Summary line for meter
-  const edibleMg = todayThc.filter(e=>e.type==='edible').reduce((s,e)=>s+e.quantity,0);
-  const vapePuffs = todayThc.filter(e=>e.type==='vape').reduce((s,e)=>s+e.quantity,0);
-  const flowerG = todayThc.filter(e=>e.type==='flower').reduce((s,e)=>s+e.quantity,0);
-
-  const parts = [];
-  if (edibleMg) parts.push(`${edibleMg.toFixed(1)}mg edible`);
-  if (vapePuffs) parts.push(`${vapePuffs} puffs`);
-  if (flowerG) parts.push(`${flowerG.toFixed(2)}g flower`);
+  const totalMg = todayThc.reduce((s,e)=>s+e.quantity,0);
 
   const meter = document.getElementById('thc-meter-total');
   const unit = document.getElementById('thc-meter-unit');
@@ -2596,12 +2471,10 @@ function renderTodayThc() {
     return;
   }
 
-  // Show edible mg if any, else puffs or grams
-  if (edibleMg) { meter.textContent = edibleMg.toFixed(1); unit.textContent = 'mg'; fill.style.width = Math.min(100,(edibleMg/50)*100)+'%'; }
-  else if (vapePuffs) { meter.textContent = vapePuffs; unit.textContent = 'puffs'; fill.style.width = Math.min(100,(vapePuffs/20)*100)+'%'; }
-  else { meter.textContent = flowerG.toFixed(2); unit.textContent = 'g'; fill.style.width = Math.min(100,(flowerG/2)*100)+'%'; }
-
-  status.textContent = parts.join(' · ');
+  meter.textContent = totalMg.toFixed(1);
+  unit.textContent = 'mg';
+  fill.style.width = Math.min(100,(totalMg/50)*100)+'%';
+  status.textContent = `${totalMg.toFixed(1)} mg logged`;
   label.style.display = 'block';
 
   todayThc.forEach(e => {
@@ -2610,11 +2483,11 @@ function renderTodayThc() {
     const noteHtml = e.note ? `<div class="entry-meta" style="color:#60f0a0;opacity:0.8;">${e.note}</div>` : '';
     row.innerHTML = `
       <div class="entry-source" style="flex:1;">
-        ${e.label || e.type}
+        ${e.label || 'Edible'}
         <div class="entry-meta">${e.time||'—'}</div>
         ${noteHtml}
       </div>
-      <span class="entry-mg" style="color:#60f0a0;">${e.quantity}${e.unit==='mg'?'':' '}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);">${e.unit}</span></span>
+      <span class="entry-mg" style="color:#60f0a0;">${e.quantity}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span>
       <button class="del-btn" onclick="deleteThcEntry('${e.id}')">×</button>`;
     list.appendChild(row);
   });
@@ -2623,43 +2496,29 @@ function renderTodayThc() {
 let thcChart = null;
 
 function renderThc() {
-  updateVapeCartDisplay();
   updateThcPreview();
   renderThcQuickGrid();
   setDefaultTime('thc-edible-time');
-  const td = todayStr();
-  ['thc-edible-date','thc-vape-date','thc-flower-date'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && !el.value) el.value = td;
-  });
+  const el = document.getElementById('thc-edible-date');
+  if (el && !el.value) el.value = todayStr();
 
-  // THC chart — edibles mg, vape puffs, flower grams as stacked bars by day
-  const allThcDates = [...new Set(thcEntries.map(e=>e.date))].sort();
-  const edibleByDay = {}, vapeByDay = {}, flowerByDay = {};
-  thcEntries.forEach(e => {
-    if (e.type==='edible') edibleByDay[e.date] = (edibleByDay[e.date]||0)+e.quantity;
-    if (e.type==='vape') vapeByDay[e.date] = (vapeByDay[e.date]||0)+e.quantity;
-    if (e.type==='flower') flowerByDay[e.date] = (flowerByDay[e.date]||0)+e.quantity;
-  });
+  // THC chart — daily total mg
+  const byDay = {};
+  thcEntries.forEach(e => { byDay[e.date] = (byDay[e.date]||0) + e.quantity; });
+  const allThcDates = Object.keys(byDay).sort();
   if (thcChart) thcChart.destroy();
   if (allThcDates.length) {
     const thcLabels = allThcDates.map(fmtDate);
+    const thcData = allThcDates.map(d => parseFloat(byDay[d].toFixed(1)));
     thcChart = new Chart(document.getElementById('thc-chart').getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: thcLabels,
-        datasets: [
-          { label: 'Edible (mg)', data: allThcDates.map(d=>edibleByDay[d]||0), backgroundColor: 'rgba(96,240,160,0.7)', borderRadius: 3 },
-          { label: 'Vape (puffs)', data: allThcDates.map(d=>vapeByDay[d]||0), backgroundColor: 'rgba(96,200,240,0.6)', borderRadius: 3 },
-          { label: 'Flower (g×10)', data: allThcDates.map(d=>(flowerByDay[d]||0)*10), backgroundColor: 'rgba(240,200,96,0.6)', borderRadius: 3 },
-        ]
-      },
+      type: 'line',
+      data: { labels: thcLabels, datasets: [{ data: thcData, borderColor: '#60f0a0', backgroundColor: 'rgba(96,240,160,0.08)', borderWidth: 2, pointRadius: thcData.length > 20 ? 0 : 2, fill: true, tension: 0.3 }] },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: true, labels: { color: '#555', font: { size: 9, family: 'DM Mono' }, boxWidth: 10, padding: 8 } } },
+        plugins: { legend: { display: false } },
         scales: {
-          x: { stacked: true, ticks: { color: '#555', font: { size: 9, family: 'DM Mono' }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false }, border: { display: false } },
-          y: { stacked: true, ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } }
+          x: { ticks: { color: '#555', font: { size: 9, family: 'DM Mono' }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false }, border: { display: false } },
+          y: { ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } }
         }
       }
     });
@@ -2673,15 +2532,14 @@ function renderThc() {
   recent.forEach(e => {
     const row = document.createElement('div');
     row.className = 'entry-item';
-    const typeIcon = e.type==='edible'?'🍬':e.type==='vape'?'💨':'🌿';
     const noteHtml = e.note ? `<div class="entry-meta" style="color:#60f0a0;opacity:0.8;">${e.note}</div>` : '';
     row.innerHTML = `
       <div class="entry-source" style="flex:1;cursor:pointer;" onclick="openThcEditModal('${e.id}')">
-        ${typeIcon} ${e.label||e.type}
+        🍬 ${e.label||'Edible'}
         <div class="entry-meta">${fmtDate(e.date)} · ${e.time||'—'}</div>
         ${noteHtml}
       </div>
-      <span class="entry-mg" style="color:#60f0a0;cursor:pointer;" onclick="openThcEditModal('${e.id}')">${e.quantity}${e.unit==='mg'?'':' '}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);">${e.unit}</span></span>
+      <span class="entry-mg" style="color:#60f0a0;cursor:pointer;" onclick="openThcEditModal('${e.id}')">${e.quantity}<span style="font-size:12px;color:var(--muted);font-family:var(--mono);"> mg</span></span>
       <button class="del-btn" onclick="deleteThcEntry('${e.id}')">×</button>`;
     list.appendChild(row);
   });
@@ -2745,10 +2603,9 @@ function openThcEditModal(id) {
   const e = thcEntries.find(x => x.id === id);
   if (!e) return;
   editingThcId = id;
-  const typeIcon = e.type==='edible'?'🍬':e.type==='vape'?'💨':'🌿';
-  document.getElementById('thc-edit-modal-title').textContent = `${typeIcon} ${e.label||e.type} — ${fmtDate(e.date)}`;
+  document.getElementById('thc-edit-modal-title').textContent = `🍬 ${e.label||'Edible'} — ${fmtDate(e.date)}`;
   document.getElementById('thc-edit-qty').value = e.quantity;
-  document.getElementById('thc-edit-unit').textContent = e.unit;
+  document.getElementById('thc-edit-unit').textContent = 'mg';
   const timeMatch = (e.time || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
   if (timeMatch) {
     let h = parseInt(timeMatch[1]);
@@ -2959,36 +2816,27 @@ function renderThcQuickGrid() {
   const seen = new Set();
   const items = [];
   for (const e of sorted) {
-    const key = e.type + '|' + (e.label||'') + '|' + e.quantity;
+    const key = (e.label||'') + '|' + e.quantity;
     if (!seen.has(key)) { seen.add(key); items.push(e); }
     if (items.length >= 4) break;
   }
   grid.innerHTML = '';
   if (!items.length) { grid.innerHTML = '<div class="empty-state">log something to see quick adds</div>'; return; }
   items.forEach(e => {
-    const icon = e.type==='edible'?'🍬':e.type==='vape'?'💨':'🌿';
     const btn = document.createElement('button');
     btn.className = 'preset-btn';
     btn.style.borderColor = 'rgba(96,240,160,0.2)';
-    btn.innerHTML = `<div class="preset-name">${icon} ${e.label||e.type}</div><span class="preset-mg" style="color:#60f0a0;">${e.quantity}</span><span class="preset-mg-unit"> ${e.unit}</span>`;
+    btn.innerHTML = `<div class="preset-name">🍬 ${e.label||'Edible'}</div><span class="preset-mg" style="color:#60f0a0;">${e.quantity}</span><span class="preset-mg-unit"> mg</span>`;
     btn.onclick = () => prefillThc(e);
     grid.appendChild(btn);
   });
 }
 function prefillThc(e) {
-  setThcType(e.type);
-  if (e.type === 'edible') {
-    document.getElementById('thc-mg-input').value = e.quantity;
-    updateThcPreview();
-    if (e.label) document.getElementById('thc-edible-note').value = '';
-  } else if (e.type === 'vape') {
-    document.getElementById('thc-puffs').value = e.quantity;
-  } else if (e.type === 'flower') {
-    document.getElementById('thc-grams').value = e.quantity;
-    if (e.label && e.label !== 'Flower') document.getElementById('thc-flower-strain').value = e.label;
-  }
-  const panel = document.getElementById('thc-panel-' + e.type);
-  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  document.getElementById('thc-mg-input').value = e.quantity;
+  updateThcPreview();
+  setDefaultTime('thc-edible-time');
+  const card = document.getElementById('thc-mg-input').closest('.custom-card');
+  if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ---- GENERIC REORDERABLE TILE SYSTEM ----
