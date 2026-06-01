@@ -1093,6 +1093,7 @@ html, body {
             <div style="position:relative;width:100%;height:180px;">
               <canvas id="scatter-combo-chart" role="img" aria-label="Scatter plot comparing two selected metrics per day">Scatter plot of selected pair.</canvas>
             </div>
+            <div id="scatter-stats" style="margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--dim);line-height:1.7;"></div>
           </div>
         </div>
 
@@ -2207,6 +2208,63 @@ function buildDualAxisChart() {
   });
 }
 
+function pearson(xs, ys) {
+  const n = xs.length;
+  if (n < 2) return null;
+  const mx = xs.reduce((a,b)=>a+b,0) / n;
+  const my = ys.reduce((a,b)=>a+b,0) / n;
+  let sxy = 0, sxx = 0, syy = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - mx, dy = ys[i] - my;
+    sxy += dx * dy; sxx += dx * dx; syy += dy * dy;
+  }
+  if (sxx === 0 || syy === 0) return null; // no variance in one variable
+  const r = sxy / Math.sqrt(sxx * syy);
+  // OLS slope/intercept for y = a + b*x
+  const b = sxy / sxx;
+  const a = my - b * mx;
+  return { r, r2: r*r, n, slope: b, intercept: a };
+}
+
+function corrStrength(absR) {
+  if (absR >= 0.7) return 'strong';
+  if (absR >= 0.4) return 'moderate';
+  if (absR >= 0.2) return 'weak';
+  return 'negligible';
+}
+
+function renderScatterStats(xKey, yKey, pts) {
+  const el = document.getElementById('scatter-stats');
+  if (!el) return;
+  if (!pts || pts.length < 2) {
+    el.innerHTML = '<span style="color:var(--muted);">Not enough overlapping days to compute a correlation.</span>';
+    return;
+  }
+  const st = pearson(pts.map(p=>p.x), pts.map(p=>p.y));
+  if (!st) {
+    el.innerHTML = '<span style="color:var(--muted);">No variation in one variable — correlation undefined.</span>';
+    return;
+  }
+  const dir = st.r >= 0 ? 'positive' : 'negative';
+  const strength = corrStrength(Math.abs(st.r));
+  const rCol = Math.abs(st.r) >= 0.4 ? 'var(--text)' : 'var(--dim)';
+  const xL = SCATTER_LABELS[xKey], yL = SCATTER_LABELS[yKey];
+  el.innerHTML =
+    '<div style="display:flex;flex-wrap:wrap;gap:6px 18px;">' +
+      '<span>r = <span style="color:' + rCol + ';">' + st.r.toFixed(3) + '</span></span>' +
+      '<span>R² = <span style="color:' + rCol + ';">' + st.r2.toFixed(3) + '</span></span>' +
+      '<span>n = <span style="color:var(--muted);">' + st.n + ' days</span></span>' +
+    '</div>' +
+    '<div style="margin-top:4px;color:var(--muted);">' +
+      strength + ' ' + dir + ' relationship · ' +
+      'R² means ~' + Math.round(st.r2 * 100) + '% of the variation in ' + yL +
+      ' is associated with ' + xL +
+    '</div>' +
+    '<div style="margin-top:2px;color:var(--dim);opacity:0.8;font-size:10px;">' +
+      'Correlation ≠ causation. With small n this can shift a lot.' +
+    '</div>';
+}
+
 function buildScatterChart(xKey, yKey) {
   const allDates = [...new Set([
     ...entries.map(e => e.date),
@@ -2227,7 +2285,7 @@ function buildScatterChart(xKey, yKey) {
     .map(d => ({ x: dataMap[xKey][d], y: dataMap[yKey][d] }))
     .filter(p => p.x !== undefined && p.y !== undefined);
 
-  if (!pts.length) return;
+  if (!pts.length) { renderScatterStats(xKey, yKey, pts); return; }
   const xVals = pts.map(p=>p.x), yVals = pts.map(p=>p.y);
   const xPad = (Math.max(...xVals) - Math.min(...xVals)) * 0.12 || 2;
   const yPad = (Math.max(...yVals) - Math.min(...yVals)) * 0.12 || 2;
@@ -2254,6 +2312,7 @@ function buildScatterChart(xKey, yKey) {
       }
     }
   });
+  renderScatterStats(xKey, yKey, pts);
 }
 
 function setScatterCombo(xKey, yKey) {
