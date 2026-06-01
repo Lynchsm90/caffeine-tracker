@@ -1071,6 +1071,7 @@ html, body {
               </div>
             </div>
             <div class="dow-grid" id="dow-chart"></div>
+            <div id="dow-delta" style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--muted);"></div>
           </div>
         </div>
 
@@ -1090,10 +1091,53 @@ html, body {
               <button class="range-btn" id="sc-caffeine-teanine" onclick="setScatterCombo('caffeine','teanine')">Caff/Teanine</button>
               <button class="range-btn" id="sc-tc-teanine" onclick="setScatterCombo('tc','teanine')">TC/Teanine</button>
             </div>
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+              <span style="font-size:10px;color:var(--dim);letter-spacing:0.06em;text-transform:uppercase;">Lag</span>
+              <button class="range-btn" id="sc-lag--1" onclick="setScatterLag(-1)" title="X leads Y by a day">X→Y −1d</button>
+              <button class="range-btn active" id="sc-lag-0" onclick="setScatterLag(0)">Same day</button>
+              <button class="range-btn" id="sc-lag-1" onclick="setScatterLag(1)" title="Y follows X by a day">X→Y +1d</button>
+            </div>
             <div style="position:relative;width:100%;height:180px;">
               <canvas id="scatter-combo-chart" role="img" aria-label="Scatter plot comparing two selected metrics per day">Scatter plot of selected pair.</canvas>
             </div>
             <div id="scatter-stats" style="margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--dim);line-height:1.7;"></div>
+          </div>
+        </div>
+
+        <!-- SUMMARY STATS -->
+        <div class="trend-tile" data-trend="summary">
+          <div class="tile-handle">⠿</div>
+          <div class="chart-wrap" style="margin-top:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div class="chart-title" style="margin-bottom:0;">Summary</div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <button class="range-btn active" id="sum-sub-caffeine" onclick="setSummarySubstance('caffeine')" style="border-color:rgba(200,240,96,0.3);color:var(--accent);">Caff</button>
+                <button class="range-btn" id="sum-sub-teacrine" onclick="setSummarySubstance('teacrine')" style="border-color:rgba(96,200,240,0.3);color:var(--accent2);">TC</button>
+                <button class="range-btn" id="sum-sub-thc" onclick="setSummarySubstance('thc')" style="border-color:rgba(96,240,160,0.3);color:#60f0a0;">THC</button>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;" id="sum-win-btns">
+              <button class="range-btn" id="sum-win-7" onclick="setSummaryWindow(7)">7d</button>
+              <button class="range-btn" id="sum-win-30" onclick="setSummaryWindow(30)">30d</button>
+              <button class="range-btn" id="sum-win-90" onclick="setSummaryWindow(90)">90d</button>
+              <button class="range-btn active" id="sum-win-all" onclick="setSummaryWindow('all')">All</button>
+            </div>
+            <div id="summary-body"></div>
+          </div>
+        </div>
+
+        <!-- TIME OF DAY -->
+        <div class="trend-tile" data-trend="tod">
+          <div class="tile-handle">⠿</div>
+          <div class="chart-wrap" style="margin-top:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <div class="chart-title" style="margin-bottom:0;">Time of day <span style="color:var(--dim);font-weight:400;">(caffeine)</span></div>
+              <button class="chart-expand-btn" onclick="expandChart('tod')" title="Expand">⤢</button>
+            </div>
+            <div style="position:relative;width:100%;height:160px;">
+              <canvas id="tod-chart" role="img" aria-label="Distribution of caffeine logging times across the day"></canvas>
+            </div>
+            <div id="tod-note" style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--muted);"></div>
           </div>
         </div>
 
@@ -2064,6 +2108,10 @@ function renderTrends() {
   // DOW chart (substance-switchable)
   renderDow();
 
+  // Summary stats + time-of-day distribution
+  renderSummary();
+  renderTimeOfDay();
+
   // History list — all dates, expandable entries per day
   const allDates = Object.keys(dt).sort().reverse();
   const hl = document.getElementById('history-list');
@@ -2154,6 +2202,199 @@ function renderDow() {
     col.innerHTML = `<div class="dow-val">${valTxt}</div><div class="dow-bar" style="height:${h}px;background:${meta.color};"></div><div class="dow-lbl">${orderedLabels[i]}</div>`;
     dc.appendChild(col);
   });
+
+  // Weekend vs weekday delta (uses raw per-day totals, not the dow averages)
+  const deltaEl = document.getElementById('dow-delta');
+  if (deltaEl) {
+    const wkday = [], wkend = [];
+    Object.entries(dt).forEach(([ds,total]) => {
+      const d = new Date(ds+'T12:00:00').getDay();
+      (d === 0 || d === 6 ? wkend : wkday).push(total);
+    });
+    if (wkday.length && wkend.length) {
+      const aWk = mean(wkday), aWe = mean(wkend);
+      const diff = aWe - aWk;
+      const pct = aWk ? Math.round((diff / aWk) * 100) : 0;
+      const dir = diff >= 0 ? 'higher' : 'lower';
+      const col = Math.abs(pct) >= 15 ? 'var(--text)' : 'var(--dim)';
+      deltaEl.innerHTML = 'Weekends run <span style="color:'+col+';">' + Math.abs(pct) + '% ' + dir +
+        '</span> than weekdays · <span style="color:var(--dim);">' +
+        aWe.toFixed(0) + ' vs ' + aWk.toFixed(0) + ' ' + meta.unit + ' avg</span>';
+    } else {
+      deltaEl.innerHTML = '<span style="color:var(--dim);">Need both weekday and weekend data for a comparison.</span>';
+    }
+  }
+}
+
+// ---- SUMMARY STATS TILE ----
+let summarySubstance = 'caffeine';
+let summaryWindow = 'all';
+const SUMMARY_META = {
+  caffeine: { unit: 'mg', color: 'var(--accent)', totals: () => dailyTotals(), hasLimit: true },
+  teacrine: { unit: 'mg', color: 'var(--accent2)', totals: () => tcDailyTotals(), hasLimit: false },
+  thc: { unit: 'mg', color: '#60f0a0', totals: () => thcEdibleDailyTotals(), hasLimit: false },
+};
+
+function setSummarySubstance(sub) {
+  summarySubstance = sub;
+  ['caffeine','teacrine','thc'].forEach(s => {
+    document.getElementById('sum-sub-'+s)?.classList.toggle('active', s === sub);
+  });
+  renderSummary();
+}
+function setSummaryWindow(win) {
+  summaryWindow = win;
+  [7,30,90,'all'].forEach(w => {
+    document.getElementById('sum-win-'+w)?.classList.toggle('active', String(w) === String(win));
+  });
+  renderSummary();
+}
+
+// longest + current run of consecutive logged days under the limit
+function underLimitStreaks(dt, limit) {
+  const dates = Object.keys(dt).sort();
+  if (!dates.length) return { current: 0, longest: 0 };
+  let longest = 0, run = 0, prev = null;
+  dates.forEach(ds => {
+    const consecutive = prev && shiftDate(prev, 1) === ds;
+    const under = dt[ds] <= limit;
+    if (under && (consecutive || run === 0 || !prev)) {
+      run = consecutive ? run + 1 : 1;
+    } else if (under) {
+      run = 1;
+    } else {
+      run = 0;
+    }
+    if (run > longest) longest = run;
+    prev = ds;
+  });
+  // current streak: walk backward from the most recent logged day
+  let current = 0;
+  for (let i = dates.length - 1; i >= 0; i--) {
+    if (dt[dates[i]] > limit) break;
+    if (i < dates.length - 1 && shiftDate(dates[i], 1) !== dates[i+1]) break;
+    current++;
+  }
+  return { current, longest };
+}
+
+function renderSummary() {
+  const body = document.getElementById('summary-body');
+  if (!body) return;
+  const meta = SUMMARY_META[summarySubstance];
+  const dtAll = meta.totals();
+  let dates = Object.keys(dtAll).sort();
+  if (summaryWindow !== 'all') {
+    const cutoff = shiftDate(todayStr(), -(summaryWindow - 1));
+    dates = dates.filter(ds => ds >= cutoff);
+  }
+  const vals = dates.map(d => dtAll[d]);
+  if (!vals.length) {
+    body.innerHTML = '<span style="color:var(--muted);font-family:var(--mono);font-size:11px;">No data in this window.</span>';
+    return;
+  }
+  const m = mean(vals), md = median(vals), mx = Math.max(...vals), sd = stdev(vals);
+  const u = meta.unit;
+  const today = todayStr();
+  const todayVal = dtAll[today];
+  const stat = (label, val) =>
+    '<div style="flex:1 1 80px;min-width:80px;">' +
+      '<div style="font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--dim);margin-bottom:2px;">' + label + '</div>' +
+      '<div style="font-family:var(--serif);font-size:20px;font-weight:300;color:' + meta.color + ';">' + val + '</div>' +
+    '</div>';
+
+  let html = '<div style="display:flex;flex-wrap:wrap;gap:14px 10px;">' +
+    stat('Mean', m.toFixed(0) + '<span style="font-size:11px;color:var(--muted);font-family:var(--mono);"> ' + u + '</span>') +
+    stat('Median', md.toFixed(0) + '<span style="font-size:11px;color:var(--muted);font-family:var(--mono);"> ' + u + '</span>') +
+    stat('Max', mx.toFixed(0) + '<span style="font-size:11px;color:var(--muted);font-family:var(--mono);"> ' + u + '</span>') +
+    stat('Std dev', sd.toFixed(0) + '<span style="font-size:11px;color:var(--muted);font-family:var(--mono);"> ' + u + '</span>') +
+    stat('Days logged', String(vals.length)) +
+    '</div>';
+
+  // % over limit + streaks (caffeine only)
+  if (meta.hasLimit) {
+    const lim = settings.limit;
+    const over = vals.filter(v => v > lim).length;
+    const overPct = Math.round((over / vals.length) * 100);
+    const streaks = underLimitStreaks(dtAll, lim);
+    html += '<div style="margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--muted);line-height:1.8;">' +
+      '<div>Over limit (' + lim + ' ' + u + '): <span style="color:' + (overPct >= 25 ? 'var(--text)' : 'var(--dim)') + ';">' + overPct + '% of days</span> (' + over + '/' + vals.length + ')</div>' +
+      '<div>Under-limit streak: <span style="color:var(--text);">' + streaks.current + ' days</span> current · ' + streaks.longest + ' longest</div>' +
+      '</div>';
+  }
+
+  // today's percentile within the window
+  if (todayVal !== undefined) {
+    const pr = percentileRank(vals, todayVal);
+    html += '<div style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--muted);">' +
+      'Today (' + todayVal.toFixed(0) + ' ' + u + ') is in the <span style="color:var(--text);">' + Math.round(pr) + 'th percentile</span> of this window' +
+      '</div>';
+  }
+
+  // rolling-average trend: last 7 logged days vs the 7 before
+  if (vals.length >= 4) {
+    const recent = vals.slice(-7);
+    const prior = vals.slice(-14, -7);
+    if (recent.length && prior.length) {
+      const aR = mean(recent), aP = mean(prior);
+      const pct = aP ? Math.round(((aR - aP) / aP) * 100) : 0;
+      const arrow = pct > 0 ? '▲' : (pct < 0 ? '▼' : '▬');
+      const col = pct > 0 ? '#ff8a8a' : (pct < 0 ? '#8affb0' : 'var(--dim)');
+      html += '<div style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--muted);">' +
+        'Recent 7-day avg <span style="color:' + col + ';">' + arrow + ' ' + Math.abs(pct) + '%</span> vs prior 7 · ' +
+        aR.toFixed(0) + ' vs ' + aP.toFixed(0) + ' ' + u +
+        '</div>';
+    }
+  }
+
+  body.innerHTML = html;
+}
+
+// ---- TIME OF DAY HISTOGRAM (caffeine) ----
+let todChart = null;
+function renderTimeOfDay() {
+  const canvas = document.getElementById('tod-chart');
+  if (!canvas) return;
+  // bucket caffeine entries into 2-hour bins by logged time
+  const bins = new Array(12).fill(0); // 0-2,2-4,...22-24
+  let counted = 0;
+  entries.forEach(e => {
+    const h = timeToHours(e.time);
+    if (h === null) return;
+    bins[Math.min(11, Math.floor(h / 2))]++;
+    counted++;
+  });
+  const labels = ['12a','2a','4a','6a','8a','10a','12p','2p','4p','6p','8p','10p'];
+  const note = document.getElementById('tod-note');
+
+  if (!counted) {
+    if (note) note.innerHTML = '<span style="color:var(--dim);">No timestamped caffeine entries yet.</span>';
+    if (todChart) { todChart.destroy(); todChart = null; }
+    return;
+  }
+
+  if (todChart) todChart.destroy();
+  todChart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets: [{ data: bins, backgroundColor: 'rgba(200,240,96,0.55)', borderColor: 'var(--accent)', borderWidth: 1, borderRadius: 3 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.parsed.y + ' entries' } } },
+      scales: {
+        x: { ticks: { color: '#555', font: { size: 9, family: 'DM Mono' }, maxRotation: 0, autoSkip: false }, grid: { display: false }, border: { display: false } },
+        y: { beginAtZero: true, ticks: { color: '#555', font: { size: 9, family: 'DM Mono' }, precision: 0 }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false } }
+      }
+    }
+  });
+
+  // peak window + late (after 4pm) share
+  const peakIdx = bins.indexOf(Math.max(...bins));
+  const late = bins.slice(8).reduce((a,b)=>a+b,0); // 4pm onward
+  const latePct = Math.round((late / counted) * 100);
+  if (note) {
+    note.innerHTML = 'Peak: <span style="color:var(--text);">' + labels[peakIdx] + '–' + labels[(peakIdx+1)%12] + '</span> · ' +
+      '<span style="color:' + (latePct >= 25 ? 'var(--text)' : 'var(--dim)') + ';">' + latePct + '%</span> of caffeine logged after 4pm';
+  }
 }
 
 // ---- DUAL AXIS + SCATTER CHARTS ----
@@ -2161,6 +2402,7 @@ let dualAxisChart = null;
 let scatterComboChart = null;
 let currentScatterX = 'thc';
 let currentScatterY = 'caffeine';
+let currentScatterLag = 0;
 
 const SCATTER_COLORS = { caffeine: '#c8f060', tc: '#60c8f0', thc: '#cc66ff', teanine: '#fb923c' };
 const SCATTER_LABELS = { caffeine: 'Caffeine', tc: 'TC', thc: 'THC', teanine: 'Teanine' };
@@ -2226,6 +2468,64 @@ function pearson(xs, ys) {
   return { r, r2: r*r, n, slope: b, intercept: a };
 }
 
+// Spearman rank correlation — robust to outliers & monotonic non-linearity
+function rankArray(arr) {
+  const idx = arr.map((v,i)=>[v,i]).sort((a,b)=>a[0]-b[0]);
+  const ranks = new Array(arr.length);
+  let i = 0;
+  while (i < idx.length) {
+    let j = i;
+    while (j+1 < idx.length && idx[j+1][0] === idx[i][0]) j++;
+    const avgRank = (i + j) / 2 + 1; // average rank for ties
+    for (let k = i; k <= j; k++) ranks[idx[k][1]] = avgRank;
+    i = j + 1;
+  }
+  return ranks;
+}
+function spearman(xs, ys) {
+  if (xs.length < 2) return null;
+  const st = pearson(rankArray(xs), rankArray(ys));
+  return st ? st.r : null;
+}
+
+function mean(a) { return a.reduce((s,v)=>s+v,0) / a.length; }
+function stdev(a) {
+  if (a.length < 2) return 0;
+  const m = mean(a);
+  return Math.sqrt(a.reduce((s,v)=>s+(v-m)*(v-m),0) / (a.length - 1)); // sample sd
+}
+function median(a) {
+  const s = [...a].sort((x,y)=>x-y);
+  const n = s.length;
+  if (!n) return 0;
+  return n % 2 ? s[(n-1)/2] : (s[n/2-1] + s[n/2]) / 2;
+}
+function percentileRank(arr, v) { // % of values <= v
+  if (!arr.length) return 0;
+  const below = arr.filter(x => x <= v).length;
+  return (below / arr.length) * 100;
+}
+
+// Parse a stored time string ("8:30 AM" / "—") to fractional hours 0–24, or null
+function timeToHours(t) {
+  if (!t) return null;
+  const m = String(t).match(/(\d+):(\d+)\s*(AM|PM)?/i);
+  if (!m) return null;
+  let h = parseInt(m[1]);
+  const min = parseInt(m[2]);
+  const ampm = (m[3] || '').toUpperCase();
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return h + min / 60;
+}
+
+// Shift a date string (YYYY-MM-DD) by n days
+function shiftDate(ds, n) {
+  const d = new Date(ds + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0,10);
+}
+
 function corrStrength(absR) {
   if (absR >= 0.7) return 'strong';
   if (absR >= 0.4) return 'moderate';
@@ -2236,32 +2536,45 @@ function corrStrength(absR) {
 function renderScatterStats(xKey, yKey, pts) {
   const el = document.getElementById('scatter-stats');
   if (!el) return;
+  const lag = currentScatterLag || 0;
+  const lagNote = lag === 0 ? 'same-day'
+    : (lag > 0 ? SCATTER_LABELS[xKey] + ' vs next-day ' + SCATTER_LABELS[yKey]
+               : SCATTER_LABELS[xKey] + ' vs previous-day ' + SCATTER_LABELS[yKey]);
   if (!pts || pts.length < 2) {
-    el.innerHTML = '<span style="color:var(--muted);">Not enough overlapping days to compute a correlation.</span>';
+    el.innerHTML = '<span style="color:var(--muted);">Not enough overlapping days to compute a correlation (' + lagNote + ').</span>';
     return;
   }
-  const st = pearson(pts.map(p=>p.x), pts.map(p=>p.y));
+  const xs = pts.map(p=>p.x), ys = pts.map(p=>p.y);
+  const st = pearson(xs, ys);
   if (!st) {
     el.innerHTML = '<span style="color:var(--muted);">No variation in one variable — correlation undefined.</span>';
     return;
   }
+  const rho = spearman(xs, ys);
   const dir = st.r >= 0 ? 'positive' : 'negative';
   const strength = corrStrength(Math.abs(st.r));
   const rCol = Math.abs(st.r) >= 0.4 ? 'var(--text)' : 'var(--dim)';
   const xL = SCATTER_LABELS[xKey], yL = SCATTER_LABELS[yKey];
+  // Slope in real units, scaled to a readable step
+  const slope = st.slope;
+  const step = Math.abs(slope) < 1 ? 10 : 1;
+  const slopeTxt = (slope >= 0 ? '+' : '') + (slope * step).toFixed(step === 10 ? 1 : 2);
   el.innerHTML =
     '<div style="display:flex;flex-wrap:wrap;gap:6px 18px;">' +
       '<span>r = <span style="color:' + rCol + ';">' + st.r.toFixed(3) + '</span></span>' +
       '<span>R² = <span style="color:' + rCol + ';">' + st.r2.toFixed(3) + '</span></span>' +
+      (rho !== null ? '<span>ρ = <span style="color:var(--dim);">' + rho.toFixed(3) + '</span> <span style="color:var(--muted);font-size:10px;">(rank)</span></span>' : '') +
       '<span>n = <span style="color:var(--muted);">' + st.n + ' days</span></span>' +
     '</div>' +
     '<div style="margin-top:4px;color:var(--muted);">' +
       strength + ' ' + dir + ' relationship · ' +
-      'R² means ~' + Math.round(st.r2 * 100) + '% of the variation in ' + yL +
-      ' is associated with ' + xL +
+      'each +' + step + ' ' + xL + ' ≈ ' + slopeTxt + ' ' + yL + ' (' + lagNote + ')' +
+    '</div>' +
+    '<div style="margin-top:2px;color:var(--muted);">' +
+      'R² ≈ ' + Math.round(st.r2 * 100) + '% of the variation in ' + yL + ' tracks with ' + xL +
     '</div>' +
     '<div style="margin-top:2px;color:var(--dim);opacity:0.8;font-size:10px;">' +
-      'Correlation ≠ causation. With small n this can shift a lot.' +
+      'r = linear, ρ = rank (robust to outliers/curves). Correlation ≠ causation; small n shifts easily.' +
     '</div>';
 }
 
@@ -2281,14 +2594,27 @@ function buildScatterChart(xKey, yKey) {
   tcEntries.forEach(e => { teanineByDay[e.date] = (teanineByDay[e.date]||0) + e.mg; });
 
   const dataMap = { caffeine: caffByDay, tc: tcDt, thc: thcDt, teanine: teanineByDay };
+  // Lag: pair x on day D with y on day D+lag. lag>0 means y follows x.
+  const lag = currentScatterLag || 0;
   const pts = allDates
-    .map(d => ({ x: dataMap[xKey][d], y: dataMap[yKey][d] }))
+    .map(d => ({ x: dataMap[xKey][d], y: dataMap[yKey][shiftDate(d, lag)] }))
     .filter(p => p.x !== undefined && p.y !== undefined);
 
   if (!pts.length) { renderScatterStats(xKey, yKey, pts); return; }
   const xVals = pts.map(p=>p.x), yVals = pts.map(p=>p.y);
   const xPad = (Math.max(...xVals) - Math.min(...xVals)) * 0.12 || 2;
   const yPad = (Math.max(...yVals) - Math.min(...yVals)) * 0.12 || 2;
+
+  // Best-fit (OLS) line endpoints across the visible x-range
+  const fit = pearson(xVals, yVals);
+  let trendData = [];
+  if (fit) {
+    const xMin = Math.min(...xVals), xMax = Math.max(...xVals);
+    trendData = [
+      { x: xMin, y: fit.intercept + fit.slope * xMin },
+      { x: xMax, y: fit.intercept + fit.slope * xMax }
+    ];
+  }
 
   if (scatterComboChart) scatterComboChart.destroy();
   scatterComboChart = new Chart(document.getElementById('scatter-combo-chart').getContext('2d'), {
@@ -2300,12 +2626,24 @@ function buildScatterChart(xKey, yKey) {
         backgroundColor: SCATTER_COLORS[yKey] + 'bb',
         borderColor: SCATTER_COLORS[yKey],
         borderWidth: 1.5,
-        pointRadius: 5
+        pointRadius: 5,
+        order: 2
+      },
+      {
+        type: 'line',
+        label: 'trend',
+        data: trendData,
+        borderColor: 'rgba(255,255,255,0.45)',
+        borderWidth: 1.5,
+        borderDash: [5,4],
+        pointRadius: 0,
+        fill: false,
+        order: 1
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${SCATTER_LABELS[xKey]}: ${Math.round(c.parsed.x)}  ${SCATTER_LABELS[yKey]}: ${Math.round(c.parsed.y)}` } } },
+      plugins: { legend: { display: false }, tooltip: { filter: c => c.dataset.label !== 'trend', callbacks: { label: c => `${SCATTER_LABELS[xKey]}: ${Math.round(c.parsed.x)}  ${SCATTER_LABELS[yKey]}: ${Math.round(c.parsed.y)}` } } },
       scales: {
         x: { title: { display: true, text: SCATTER_LABELS[xKey], color: SCATTER_COLORS[xKey], font: { size: 10, family: 'DM Mono' } }, ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false }, min: Math.round(Math.min(...xVals) - xPad), max: Math.round(Math.max(...xVals) + xPad) },
         y: { title: { display: true, text: SCATTER_LABELS[yKey], color: SCATTER_COLORS[yKey], font: { size: 10, family: 'DM Mono' } }, ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.05)' }, border: { display: false }, min: Math.round(Math.min(...yVals) - yPad), max: Math.round(Math.max(...yVals) + yPad) }
@@ -2321,6 +2659,14 @@ function setScatterCombo(xKey, yKey) {
   const btn = document.getElementById('sc-' + xKey + '-' + yKey);
   if (btn) btn.classList.add('active');
   buildScatterChart(xKey, yKey);
+}
+
+function setScatterLag(lag) {
+  currentScatterLag = lag;
+  document.querySelectorAll('#sc-lag--1, #sc-lag-0, #sc-lag-1').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('sc-lag-' + lag);
+  if (btn) btn.classList.add('active');
+  buildScatterChart(currentScatterX, currentScatterY);
 }
 
 // ---- RENDER SETTINGS ----
@@ -3030,9 +3376,17 @@ function applyOrder(name) {
   let order;
   try { order = JSON.parse(localStorage.getItem(cfg.storageKey)); } catch {}
   if (!Array.isArray(order)) return;
+  // Tiles present in DOM but missing from saved order (e.g. newly added tiles)
+  const known = new Set(order);
+  const allTiles = [...container.querySelectorAll('.'+cfg.tileClass)];
+  // First, place saved-order tiles in sequence
   order.forEach(key => {
     const tile = container.querySelector(`.${cfg.tileClass}[data-${cfg.attr}="${key}"]`);
     if (tile) container.appendChild(tile);
+  });
+  // Then append any new tiles not in the saved order, preserving their DOM order
+  allTiles.forEach(tile => {
+    if (!known.has(tile.dataset[cfg.attr])) container.appendChild(tile);
   });
 }
 function saveOrder(name) {
@@ -3114,6 +3468,7 @@ const CHART_FS_TITLES = {
   daily: 'Daily totals',
   dow: 'Avg by day of week',
   scatter: 'Correlation',
+  tod: 'Time of day',
 };
 const CHART_FS_SIZE_KEY = 'chart_fs_size';
 function getChartFsSize() { return localStorage.getItem(CHART_FS_SIZE_KEY) || 'm'; }
@@ -3145,7 +3500,7 @@ function expandChart(which) {
   });
 }
 function resizeActiveCharts() {
-  [mainChart, dualAxisChart, scatterComboChart].forEach(c => { if (c) try { c.resize(); } catch(e){} });
+  [mainChart, dualAxisChart, scatterComboChart, todChart].forEach(c => { if (c) try { c.resize(); } catch(e){} });
 }
 function closeChartFs() {
   if (!chartFsActive) { document.getElementById('chart-fs').classList.remove('open'); return; }
