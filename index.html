@@ -154,6 +154,68 @@ html, body {
 .substance-tile.dragging, .trend-tile.dragging { opacity: 0.5; }
 .substance-tile.drag-over, .trend-tile.drag-over { outline: 2px dashed var(--accent); outline-offset: 2px; border-radius: 16px; }
 
+/* CHART EXPAND (fullscreen) */
+.chart-expand-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px 7px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+  margin-left: 8px;
+}
+.chart-expand-btn:hover { color: var(--text); border-color: var(--border2); }
+/* hide expand affordance while reordering */
+#trend-container.editing .chart-expand-btn { display: none; }
+
+#chart-fs {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: var(--bg, #0a0a0a);
+  flex-direction: column;
+  padding: 16px;
+}
+#chart-fs.open { display: flex; }
+#chart-fs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex: 0 0 auto;
+}
+#chart-fs-close {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+#chart-fs-close:hover { color: var(--text); border-color: var(--border2); }
+#chart-fs-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+/* When a tile is hosted in fullscreen, let its chart fill the space */
+#chart-fs-body .trend-tile { margin-bottom: 0; height: 100%; }
+#chart-fs-body .trend-tile .chart-wrap { height: 100%; display: flex; flex-direction: column; }
+#chart-fs-body .trend-tile .chart-wrap > div[style*="position:relative"] {
+  flex: 1 1 auto !important;
+  height: auto !important;
+  min-height: 0;
+}
+#chart-fs-body .tile-handle { display: none !important; }
+
 /* EXPANDABLE METER CARD */
 .meter-card.expandable { cursor: pointer; transition: border-color 0.15s; }
 .meter-card.expandable:active { border-color: var(--border2); }
@@ -904,6 +966,7 @@ html, body {
           <div class="chart-wrap" style="margin-top:0;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
               <div class="chart-title" style="margin-bottom:0;">Daily totals — dual axis</div>
+              <button class="chart-expand-btn" onclick="expandChart('dual')" title="Expand">⤢</button>
             </div>
             <div style="display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap;" id="dual-legend">
               <span style="font-size:10px;color:var(--dim);display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:16px;height:2px;background:#c8f060;border-radius:1px;"></span>Caffeine</span>
@@ -927,6 +990,7 @@ html, body {
                 <button class="range-btn" id="thc-overlay-btn" onclick="toggleThcOverlay()" title="THC overlay" style="color:#60f0a0;border-color:rgba(96,240,160,0.3);">THC</button>
                 <button class="range-btn" id="type-bar" onclick="setChartType('bar')" title="Bar chart">▐▌</button>
                 <button class="range-btn active" id="type-line" onclick="setChartType('line')" title="Line chart">╱</button>
+                <button class="chart-expand-btn" onclick="expandChart('daily')" title="Expand">⤢</button>
               </div>
             </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;" id="range-btns">
@@ -971,6 +1035,7 @@ html, body {
                 <button class="range-btn active" id="dow-sub-caffeine" onclick="setDowSubstance('caffeine')" style="border-color:rgba(200,240,96,0.3);color:var(--accent);">Caff</button>
                 <button class="range-btn" id="dow-sub-teacrine" onclick="setDowSubstance('teacrine')" style="border-color:rgba(96,200,240,0.3);color:var(--accent2);">TC</button>
                 <button class="range-btn" id="dow-sub-thc" onclick="setDowSubstance('thc')" style="border-color:rgba(96,240,160,0.3);color:#60f0a0;">THC</button>
+                <button class="chart-expand-btn" onclick="expandChart('dow')" title="Expand">⤢</button>
               </div>
             </div>
             <div class="dow-grid" id="dow-chart"></div>
@@ -981,7 +1046,10 @@ html, body {
         <div class="trend-tile" data-trend="scatter">
           <div class="tile-handle">⠿</div>
           <div class="chart-wrap" style="margin-top:0;">
-            <div class="chart-title" style="margin-bottom:10px;">Correlation — pick a pair</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <div class="chart-title" style="margin-bottom:0;">Correlation — pick a pair</div>
+              <button class="chart-expand-btn" onclick="expandChart('scatter')" title="Expand">⤢</button>
+            </div>
             <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;" id="scatter-combo-btns">
               <button class="range-btn active" id="sc-thc-caffeine" onclick="setScatterCombo('thc','caffeine')">THC/Caff</button>
               <button class="range-btn" id="sc-thc-tc" onclick="setScatterCombo('thc','tc')">THC/TC</button>
@@ -1163,6 +1231,15 @@ html, body {
       ⚙
     </button>
   </nav>
+
+  <!-- FULLSCREEN CHART OVERLAY -->
+  <div id="chart-fs">
+    <div id="chart-fs-header">
+      <div class="chart-title" id="chart-fs-title" style="margin-bottom:0;">Chart</div>
+      <button id="chart-fs-close" onclick="closeChartFs()">✕ Close</button>
+    </div>
+    <div id="chart-fs-body"></div>
+  </div>
 
   <!-- EDIT MODAL -->
   <div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:100;align-items:flex-end;justify-content:center;">
@@ -2931,6 +3008,51 @@ function initReorder(name) {
 // Onclick handlers referenced in markup
 function toggleTileEdit() { toggleEdit('substance'); }
 function toggleTrendEdit() { toggleEdit('trend'); }
+
+// ---- FULLSCREEN CHART ----
+const CHART_FS_TITLES = {
+  dual: 'Daily totals — dual axis',
+  daily: 'Daily totals',
+  dow: 'Avg by day of week',
+  scatter: 'Correlation',
+};
+let chartFsActive = null; // { tile, placeholder }
+function expandChart(which) {
+  const tile = document.querySelector('.trend-tile[data-trend="' + which + '"]');
+  if (!tile) return;
+  // leave a placeholder so we can restore the tile to its exact spot
+  const placeholder = document.createElement('div');
+  placeholder.style.display = 'none';
+  tile.parentNode.insertBefore(placeholder, tile);
+  document.getElementById('chart-fs-body').appendChild(tile);
+  document.getElementById('chart-fs-title').textContent = CHART_FS_TITLES[which] || 'Chart';
+  document.getElementById('chart-fs').classList.add('open');
+  chartFsActive = { tile, placeholder };
+  // let the layout settle, then resize the Chart.js instance to fill
+  requestAnimationFrame(() => {
+    setTimeout(resizeActiveCharts, 30);
+  });
+}
+function resizeActiveCharts() {
+  [mainChart, dualAxisChart, scatterComboChart].forEach(c => { if (c) try { c.resize(); } catch(e){} });
+}
+function closeChartFs() {
+  if (!chartFsActive) { document.getElementById('chart-fs').classList.remove('open'); return; }
+  const { tile, placeholder } = chartFsActive;
+  placeholder.parentNode.insertBefore(tile, placeholder);
+  placeholder.remove();
+  document.getElementById('chart-fs').classList.remove('open');
+  chartFsActive = null;
+  requestAnimationFrame(() => { setTimeout(resizeActiveCharts, 30); });
+}
+// Esc closes; also re-resize on window resize while open
+document.addEventListener('keydown', function(ev){
+  if (ev.key === 'Escape' && chartFsActive) closeChartFs();
+});
+window.addEventListener('resize', function(){
+  if (chartFsActive) resizeActiveCharts();
+});
+
 
 // ---- INIT ----
 document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).toUpperCase();
