@@ -176,23 +176,55 @@ html, body {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: var(--bg, #0a0a0a);
-  flex-direction: column;
+  background: rgba(0,0,0,0.7);
+  align-items: center;
+  justify-content: center;
   padding: 16px;
 }
 #chart-fs.open { display: flex; }
+#chart-fs-panel {
+  background: var(--bg, #0a0a0a);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.6);
+  /* size set by #chart-fs[data-size] rules below */
+}
+/* Size presets — width and height of the panel */
+#chart-fs[data-size="s"] #chart-fs-panel { width: min(560px, 94vw);  height: min(420px, 80vh); }
+#chart-fs[data-size="m"] #chart-fs-panel { width: min(820px, 94vw);  height: min(560px, 85vh); }
+#chart-fs[data-size="l"] #chart-fs-panel { width: min(1100px, 96vw); height: min(720px, 90vh); }
+#chart-fs[data-size="full"] #chart-fs-panel { width: 96vw; height: 92vh; }
 #chart-fs-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   margin-bottom: 12px;
   flex: 0 0 auto;
 }
+#chart-fs-controls { display: flex; align-items: center; gap: 6px; }
+.fs-size-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 4px 9px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.fs-size-btn:hover { color: var(--text); border-color: var(--border2); }
+.fs-size-btn.active { color: var(--bg, #0a0a0a); background: var(--accent); border-color: var(--accent); }
 #chart-fs-close {
   background: none;
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 6px 12px;
+  padding: 4px 11px;
   font-family: var(--mono);
   font-size: 11px;
   color: var(--muted);
@@ -1233,12 +1265,20 @@ html, body {
   </nav>
 
   <!-- FULLSCREEN CHART OVERLAY -->
-  <div id="chart-fs">
-    <div id="chart-fs-header">
-      <div class="chart-title" id="chart-fs-title" style="margin-bottom:0;">Chart</div>
-      <button id="chart-fs-close" onclick="closeChartFs()">✕ Close</button>
+  <div id="chart-fs" data-size="m">
+    <div id="chart-fs-panel">
+      <div id="chart-fs-header">
+        <div class="chart-title" id="chart-fs-title" style="margin-bottom:0;">Chart</div>
+        <div id="chart-fs-controls">
+          <button class="fs-size-btn" data-fssize="s" onclick="setChartFsSize('s')">S</button>
+          <button class="fs-size-btn" data-fssize="m" onclick="setChartFsSize('m')">M</button>
+          <button class="fs-size-btn" data-fssize="l" onclick="setChartFsSize('l')">L</button>
+          <button class="fs-size-btn" data-fssize="full" onclick="setChartFsSize('full')">Full</button>
+          <button id="chart-fs-close" onclick="closeChartFs()">✕</button>
+        </div>
+      </div>
+      <div id="chart-fs-body"></div>
     </div>
-    <div id="chart-fs-body"></div>
   </div>
 
   <!-- EDIT MODAL -->
@@ -3016,6 +3056,17 @@ const CHART_FS_TITLES = {
   dow: 'Avg by day of week',
   scatter: 'Correlation',
 };
+const CHART_FS_SIZE_KEY = 'chart_fs_size';
+function getChartFsSize() { return localStorage.getItem(CHART_FS_SIZE_KEY) || 'm'; }
+function setChartFsSize(size) {
+  localStorage.setItem(CHART_FS_SIZE_KEY, size);
+  const fs = document.getElementById('chart-fs');
+  fs.setAttribute('data-size', size);
+  document.querySelectorAll('.fs-size-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-fssize') === size);
+  });
+  requestAnimationFrame(() => { setTimeout(resizeActiveCharts, 30); });
+}
 let chartFsActive = null; // { tile, placeholder }
 function expandChart(which) {
   const tile = document.querySelector('.trend-tile[data-trend="' + which + '"]');
@@ -3027,6 +3078,7 @@ function expandChart(which) {
   document.getElementById('chart-fs-body').appendChild(tile);
   document.getElementById('chart-fs-title').textContent = CHART_FS_TITLES[which] || 'Chart';
   document.getElementById('chart-fs').classList.add('open');
+  setChartFsSize(getChartFsSize()); // apply saved size + highlight button
   chartFsActive = { tile, placeholder };
   // let the layout settle, then resize the Chart.js instance to fill
   requestAnimationFrame(() => {
@@ -3051,6 +3103,10 @@ document.addEventListener('keydown', function(ev){
 });
 window.addEventListener('resize', function(){
   if (chartFsActive) resizeActiveCharts();
+});
+// Click outside the panel (on the dark backdrop) closes
+document.getElementById('chart-fs').addEventListener('click', function(ev){
+  if (ev.target === this && chartFsActive) closeChartFs();
 });
 
 
