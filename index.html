@@ -840,6 +840,37 @@ html, body {
       </div>
     </div>
 
+    <!-- LAST DOSE -->
+    <div class="screen" id="screen-lastdose">
+      <div class="meter-card" style="text-align:center;padding:32px 16px;margin-top:10px;">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">Time since last dose</div>
+        <div id="lastdose-elapsed" style="font-family:var(--serif);font-size:46px;color:var(--accent);line-height:1;">—</div>
+        <div id="lastdose-sub" style="font-size:12px;color:var(--muted);margin-top:12px;">no dose logged yet</div>
+      </div>
+
+      <button class="add-btn" onclick="logLastDoseNow()">I just had caffeine</button>
+
+      <div class="section-label" id="lastdose-edit-toggle" onclick="toggleLastDoseEdit()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-top:20px;">
+        <span>Edit time</span>
+        <span class="card-chevron" id="lastdose-edit-chevron">›</span>
+      </div>
+      <div class="custom-card" id="lastdose-edit-card" style="display:none;">
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <div style="flex:1;">
+            <div class="section-label" style="margin-top:0;">Date</div>
+            <input type="date" id="lastdose-edit-date"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
+          </div>
+          <div style="flex:1;">
+            <div class="section-label" style="margin-top:0;">Time</div>
+            <input type="time" id="lastdose-edit-time"
+              style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:var(--mono);font-size:14px;color:var(--text);outline:none;" />
+          </div>
+        </div>
+        <button class="add-btn" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);" onclick="saveLastDoseEdit()">Save</button>
+      </div>
+    </div>
+
     <!-- LOG (CAFFEINE) -->
     <div class="screen" id="screen-log">
       <!-- QUICK ADD -->
@@ -1287,6 +1318,10 @@ html, body {
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
       Today
     </button>
+    <button class="tab" id="tab-lastdose" onclick="switchTab('lastdose')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg>
+      Last
+    </button>
     <button class="tab" id="tab-trends" onclick="switchTab('trends')">
       <svg viewBox="0 0 24 24"><path d="M3 18l5-6 4 3 5-7 4 4"/></svg>
       Trends
@@ -1575,6 +1610,98 @@ function dailyTotals() {
   const map = {};
   entries.forEach(e => { map[e.date] = (map[e.date]||0) + e.mg; });
   return map;
+}
+
+// ---- LAST DOSE (time-only tracker) ----
+let lastDose = null; // { date: 'YYYY-MM-DD', time: '8:45 AM' }
+let lastDoseTicker = null;
+
+async function fetchLastDose() {
+  const { data, error } = await sb.from('last_dose').select('*').eq('id', 1).maybeSingle();
+  if (error) { showStatus('last dose sync error', true); return; }
+  lastDose = data ? { date: data.date, time: data.time } : null;
+}
+
+async function saveLastDose(date, time) {
+  const { error } = await sb.from('last_dose').upsert({ id: 1, date, time });
+  if (error) { showStatus('save failed', true); return false; }
+  lastDose = { date, time };
+  return true;
+}
+
+function lastDoseDateTime() {
+  if (!lastDose) return null;
+  const hrs = timeToHours(lastDose.time);
+  if (hrs == null) return null;
+  const d = new Date(lastDose.date + 'T00:00:00');
+  d.setHours(Math.floor(hrs), Math.round((hrs % 1) * 60), 0, 0);
+  return d;
+}
+
+function formatElapsed(ms) {
+  if (ms < 0) ms = 0;
+  const totalMin = Math.floor(ms / 60000);
+  const days = Math.floor(totalMin / 1440);
+  const hours = Math.floor((totalMin % 1440) / 60);
+  const mins = totalMin % 60;
+  if (days > 0) return days + 'd ' + hours + 'h';
+  if (hours > 0) return hours + 'h ' + mins + 'm';
+  return mins + 'm';
+}
+
+function renderLastDose() {
+  const dt = lastDoseDateTime();
+  const valEl = document.getElementById('lastdose-elapsed');
+  const subEl = document.getElementById('lastdose-sub');
+  if (!dt) {
+    valEl.textContent = '—';
+    subEl.textContent = 'no dose logged yet';
+  } else {
+    valEl.textContent = formatElapsed(Date.now() - dt.getTime());
+    const dayLabel = lastDose.date === todayStr() ? 'today' : fmtDate(lastDose.date);
+    subEl.textContent = 'since ' + lastDose.time + ' · ' + dayLabel;
+  }
+}
+
+async function logLastDoseNow() {
+  const now = new Date();
+  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  showStatus('saving…');
+  const ok = await saveLastDose(todayStr(), time);
+  if (ok) {
+    if (navigator.vibrate) navigator.vibrate(15);
+    showStatus('logged');
+    renderLastDose();
+  }
+}
+
+function toggleLastDoseEdit() {
+  const card = document.getElementById('lastdose-edit-card');
+  const chevron = document.getElementById('lastdose-edit-chevron');
+  const open = card.style.display !== 'none';
+  card.style.display = open ? 'none' : 'block';
+  chevron.classList.toggle('open', !open);
+  if (!open) {
+    // pre-fill with current last-dose value, or now if none set
+    const dt = lastDoseDateTime() || new Date();
+    document.getElementById('lastdose-edit-date').value = dt.toISOString().slice(0,10);
+    const h = String(dt.getHours()).padStart(2,'0');
+    const m = String(dt.getMinutes()).padStart(2,'0');
+    document.getElementById('lastdose-edit-time').value = h + ':' + m;
+  }
+}
+
+async function saveLastDoseEdit() {
+  const dateVal = document.getElementById('lastdose-edit-date').value;
+  const timeVal = document.getElementById('lastdose-edit-time').value;
+  if (!dateVal || !timeVal) { showStatus('set a date and time', true); return; }
+  showStatus('saving…');
+  const ok = await saveLastDose(dateVal, fmtTimeInput(timeVal));
+  if (ok) {
+    showStatus('saved');
+    renderLastDose();
+    toggleLastDoseEdit();
+  }
 }
 
 // ---- RENDER TODAY ----
@@ -2684,11 +2811,13 @@ function renderSettings() {
 
 // ---- ACTIONS ----
 function switchTab(tab) {
-  ['today','log','trends','teacrine','thc','settings'].forEach(t => {
+  ['today','lastdose','log','trends','teacrine','thc','settings'].forEach(t => {
     document.getElementById('screen-'+t).classList.toggle('active', t===tab);
     document.getElementById('tab-'+t).classList.toggle('active', t===tab);
   });
+  if (lastDoseTicker) { clearInterval(lastDoseTicker); lastDoseTicker = null; }
   if (tab==='today') { renderToday(); renderTodayTeacrine(); renderTodayThc(); }
+  if (tab==='lastdose') { renderLastDose(); lastDoseTicker = setInterval(renderLastDose, 30000); }
   if (tab==='log') renderLog();
   if (tab==='trends') renderTrends();
   if (tab==='teacrine') renderTeacrine();
@@ -3533,6 +3662,7 @@ document.getElementById('today-date').textContent = new Date().toLocaleDateStrin
   await fetchEntries();
   await fetchTeacrineEntries();
   await fetchThcEntries();
+  await fetchLastDose();
   applyOrder('substance'); initReorder('substance');
   applyOrder('trend'); initReorder('trend');
   restoreCardExpands();
