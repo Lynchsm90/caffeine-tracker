@@ -1813,6 +1813,19 @@ function setLdRange(r) {
   renderLastDoseChart();
 }
 
+// Compress the inactive overnight hours (12am-4am, 5pm-12am) so the active
+// window (4am-5pm) gets most of the chart's vertical space.
+const LD_NIGHT1_END = 4;   // 12am-4am compressed
+const LD_ACTIVE_END = 17;  // 4am-5pm full resolution, 5pm-12am compressed
+const LD_COMPRESS = 0.2;   // inactive hours rendered at 20% height
+function ldWarpHour(h) {
+  if (h <= LD_NIGHT1_END) return h * LD_COMPRESS;
+  if (h <= LD_ACTIVE_END) return LD_NIGHT1_END * LD_COMPRESS + (h - LD_NIGHT1_END);
+  return LD_NIGHT1_END * LD_COMPRESS + (LD_ACTIVE_END - LD_NIGHT1_END) + (h - LD_ACTIVE_END) * LD_COMPRESS;
+}
+const LD_WARP_MAX = ldWarpHour(24);
+const LD_TICK_HOURS = [0,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,19,21,23,24];
+
 function renderLastDoseChart() {
   const canvas = document.getElementById('lastdose-chart');
   if (!canvas) return;
@@ -1825,7 +1838,8 @@ function renderLastDoseChart() {
   if (lastDoseChart) { lastDoseChart.destroy(); lastDoseChart = null; }
   if (!dates.length) return;
   const labels = dates.map(fmtDate);
-  const data = dates.map(d => parseFloat(byDay[d].toFixed(2)));
+  const realHours = dates.map(d => byDay[d]);
+  const data = realHours.map(h => parseFloat(ldWarpHour(h).toFixed(4)));
 
   lastDoseChart = new Chart(canvas.getContext('2d'), {
     type: ldChartType,
@@ -1845,13 +1859,16 @@ function renderLastDoseChart() {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: c => hoursToTimeLabel(c.parsed.y) } }
+        tooltip: { callbacks: { label: c => hoursToTimeLabel(realHours[c.dataIndex]) } }
       },
       scales: {
         x: { ticks: { color: '#555', font: { size: 9, family: 'DM Mono' }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false }, border: { display: false } },
         y: {
-          min: 0, max: 24,
-          ticks: { color: '#555', font: { size: 9, family: 'DM Mono' }, stepSize: 1, autoSkip: false, callback: v => hoursToTimeLabel(v) },
+          min: 0, max: LD_WARP_MAX,
+          afterBuildTicks: axis => {
+            axis.ticks = LD_TICK_HOURS.map(h => ({ value: ldWarpHour(h), label: hoursToTimeLabel(h) }));
+          },
+          ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } },
           grid: { color: 'rgba(255,255,255,0.05)' },
           border: { display: false }
         }
