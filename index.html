@@ -863,7 +863,7 @@ html, body {
             <button class="range-btn active" id="ld-type-line" onclick="setLdChartType('line')" title="Line chart">╱</button>
           </div>
         </div>
-        <div style="position:relative;width:100%;height:360px;">
+        <div style="position:relative;width:100%;height:480px;">
           <canvas id="lastdose-chart"></canvas>
         </div>
       </div>
@@ -1851,7 +1851,7 @@ function renderLastDoseChart() {
         x: { ticks: { color: '#555', font: { size: 9, family: 'DM Mono' }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false }, border: { display: false } },
         y: {
           min: 0, max: 24,
-          ticks: { color: '#555', font: { size: 9, family: 'DM Mono' }, stepSize: 1, callback: v => hoursToTimeLabel(v) },
+          ticks: { color: '#555', font: { size: 9, family: 'DM Mono' }, stepSize: 1, autoSkip: false, callback: v => hoursToTimeLabel(v) },
           grid: { color: 'rgba(255,255,255,0.05)' },
           border: { display: false }
         }
