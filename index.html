@@ -1824,7 +1824,14 @@ function ldWarpHour(h) {
   return LD_NIGHT1_END * LD_COMPRESS + (LD_ACTIVE_END - LD_NIGHT1_END) + (h - LD_ACTIVE_END) * LD_COMPRESS;
 }
 const LD_WARP_MAX = ldWarpHour(24);
-const LD_TICK_HOURS = [0,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,19,21,23,24];
+const LD_TICK_HOURS = [0,2,4,5,6,7,8,9,10,11,12,13,14,15,16,17,19,21,23,24]; // sparse overnight, hourly in active window
+
+// Compact axis-only label: "12midnight", "1".."11", "12noon", "1".."11"
+function ldAxisHourLabel(h) {
+  if (h === 0) return '12midnight';
+  if (h === 12) return '12noon';
+  return String(h % 12);
+}
 
 function renderLastDoseChart() {
   const canvas = document.getElementById('lastdose-chart');
@@ -1866,9 +1873,12 @@ function renderLastDoseChart() {
         y: {
           min: 0, max: LD_WARP_MAX,
           afterBuildTicks: axis => {
-            axis.ticks = LD_TICK_HOURS.map(h => ({ value: ldWarpHour(h), label: hoursToTimeLabel(h) }));
+            axis.ticks = LD_TICK_HOURS.map(h => ({ value: ldWarpHour(h) }));
           },
-          ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } },
+          ticks: {
+            color: '#555', font: { size: 9, family: 'DM Mono' },
+            callback: (value, index) => ldAxisHourLabel(LD_TICK_HOURS[index])
+          },
           grid: { color: 'rgba(255,255,255,0.05)' },
           border: { display: false }
         }
